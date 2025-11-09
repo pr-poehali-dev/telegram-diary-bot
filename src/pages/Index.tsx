@@ -9,11 +9,82 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+type EventType = 'study' | 'event' | 'booking';
+
+interface CalendarEvent {
+  id: number;
+  date: Date;
+  type: EventType;
+  title: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+}
+
+interface WeekSchedule {
+  [key: string]: { start: string; end: string } | null;
+}
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [showEventDialog, setShowEventDialog] = useState(false);
+  const [showStudyDialog, setShowStudyDialog] = useState(false);
+  const [blockedDates, setBlockedDates] = useState<Date[]>([]);
+
+  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>({
+    monday: { start: '09:00', end: '15:00' },
+    tuesday: { start: '10:00', end: '16:00' },
+    wednesday: null,
+    thursday: { start: '09:00', end: '15:00' },
+    friday: { start: '10:00', end: '14:00' },
+    saturday: null,
+    sunday: null,
+  });
+
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([
+    {
+      id: 1,
+      date: new Date(),
+      type: 'study',
+      title: 'Учеба',
+      startTime: '09:00',
+      endTime: '15:00',
+    },
+    {
+      id: 2,
+      date: new Date(new Date().setDate(new Date().getDate() + 1)),
+      type: 'event',
+      title: 'День рождения друга',
+      startTime: '18:00',
+      endTime: '22:00',
+      description: 'Личное мероприятие',
+    },
+  ]);
+
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    startTime: '',
+    endTime: '',
+    description: '',
+  });
 
   const mockBookings = [
     { id: 1, client: 'Анна Петрова', service: 'Маникюр', time: '10:00', status: 'confirmed', duration: 60 },
@@ -62,6 +133,83 @@ const Index = () => {
         return 'Неизвестно';
     }
   };
+
+  const getEventTypeColor = (type: EventType) => {
+    switch (type) {
+      case 'study':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'event':
+        return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'booking':
+        return 'bg-green-100 text-green-700 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getEventTypeText = (type: EventType) => {
+    switch (type) {
+      case 'study':
+        return 'Учеба';
+      case 'event':
+        return 'Мероприятие';
+      case 'booking':
+        return 'Запись';
+      default:
+        return 'Событие';
+    }
+  };
+
+  const addEvent = () => {
+    if (!date || !newEvent.title || !newEvent.startTime || !newEvent.endTime) return;
+
+    const event: CalendarEvent = {
+      id: Date.now(),
+      date: new Date(date),
+      type: 'event',
+      title: newEvent.title,
+      startTime: newEvent.startTime,
+      endTime: newEvent.endTime,
+      description: newEvent.description,
+    };
+
+    setCalendarEvents([...calendarEvents, event]);
+    setNewEvent({ title: '', startTime: '', endTime: '', description: '' });
+    setShowEventDialog(false);
+  };
+
+  const toggleBlockedDate = () => {
+    if (!date) return;
+    
+    const isBlocked = blockedDates.some(
+      (d) => d.toDateString() === date.toDateString()
+    );
+
+    if (isBlocked) {
+      setBlockedDates(blockedDates.filter((d) => d.toDateString() !== date.toDateString()));
+    } else {
+      setBlockedDates([...blockedDates, new Date(date)]);
+    }
+  };
+
+  const getEventsForDate = (selectedDate: Date | undefined) => {
+    if (!selectedDate) return [];
+    return calendarEvents.filter(
+      (event) => event.date.toDateString() === selectedDate.toDateString()
+    );
+  };
+
+  const isDayBlocked = (checkDate: Date | undefined) => {
+    if (!checkDate) return false;
+    return blockedDates.some((d) => d.toDateString() === checkDate.toDateString());
+  };
+
+  const getDayOfWeek = (date: Date) => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[date.getDay()];
+  };
+
+  const eventsForSelectedDate = getEventsForDate(date);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -257,42 +405,273 @@ const Index = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-1">
                   <CardHeader>
-                    <CardTitle>Календарь</CardTitle>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Календарь</span>
+                      <Dialog open={showStudyDialog} onOpenChange={setShowStudyDialog}>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <Icon name="GraduationCap" size={16} />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Шаблон недели (Учеба)</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            {Object.entries(weekSchedule).map(([day, schedule]) => (
+                              <div key={day} className="flex items-center gap-4">
+                                <Label className="w-24 capitalize">{day}</Label>
+                                <Input
+                                  type="time"
+                                  value={schedule?.start || ''}
+                                  onChange={(e) =>
+                                    setWeekSchedule({
+                                      ...weekSchedule,
+                                      [day]: schedule
+                                        ? { ...schedule, start: e.target.value }
+                                        : { start: e.target.value, end: '' },
+                                    })
+                                  }
+                                  className="flex-1"
+                                />
+                                <Input
+                                  type="time"
+                                  value={schedule?.end || ''}
+                                  onChange={(e) =>
+                                    setWeekSchedule({
+                                      ...weekSchedule,
+                                      [day]: schedule
+                                        ? { ...schedule, end: e.target.value }
+                                        : { start: '', end: e.target.value },
+                                    })
+                                  }
+                                  className="flex-1"
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setWeekSchedule({ ...weekSchedule, [day]: null })
+                                  }
+                                >
+                                  <Icon name="X" size={16} />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button onClick={() => setShowStudyDialog(false)} className="w-full">
+                              Сохранить
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md" />
+                  <CardContent className="space-y-4">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      className="rounded-md"
+                      modifiers={{
+                        blocked: blockedDates,
+                        hasStudy: (day) => {
+                          const dayName = getDayOfWeek(day);
+                          return weekSchedule[dayName] !== null;
+                        },
+                        hasEvent: (day) =>
+                          calendarEvents.some(
+                            (e) => e.date.toDateString() === day.toDateString()
+                          ),
+                      }}
+                      modifiersStyles={{
+                        blocked: {
+                          backgroundColor: '#fee2e2',
+                          color: '#991b1b',
+                          fontWeight: 'bold',
+                        },
+                        hasStudy: {
+                          backgroundColor: '#dbeafe',
+                          color: '#1e40af',
+                        },
+                        hasEvent: {
+                          backgroundColor: '#e9d5ff',
+                          color: '#6b21a8',
+                        },
+                      }}
+                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+                        <span>Учеба</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
+                        <span>Мероприятия</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+                        <span>Занят</span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card className="lg:col-span-2">
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>График на {date?.toLocaleDateString('ru-RU')}</CardTitle>
-                    <Button size="sm" className="gap-2">
-                      <Icon name="Plus" size={16} />
-                      Добавить событие
-                    </Button>
+                    <CardTitle>
+                      {date?.toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" className="gap-2">
+                            <Icon name="Plus" size={16} />
+                            Мероприятие
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Добавить мероприятие</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Название</Label>
+                              <Input
+                                value={newEvent.title}
+                                onChange={(e) =>
+                                  setNewEvent({ ...newEvent, title: e.target.value })
+                                }
+                                placeholder="День рождения друга"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Начало</Label>
+                                <Input
+                                  type="time"
+                                  value={newEvent.startTime}
+                                  onChange={(e) =>
+                                    setNewEvent({ ...newEvent, startTime: e.target.value })
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Конец</Label>
+                                <Input
+                                  type="time"
+                                  value={newEvent.endTime}
+                                  onChange={(e) =>
+                                    setNewEvent({ ...newEvent, endTime: e.target.value })
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Описание (опционально)</Label>
+                              <Textarea
+                                value={newEvent.description}
+                                onChange={(e) =>
+                                  setNewEvent({ ...newEvent, description: e.target.value })
+                                }
+                                placeholder="Дополнительная информация..."
+                              />
+                            </div>
+                            <Button onClick={addEvent} className="w-full">
+                              Добавить
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        size="sm"
+                        variant={isDayBlocked(date) ? 'destructive' : 'outline'}
+                        onClick={toggleBlockedDate}
+                        className="gap-2"
+                      >
+                        <Icon name="Ban" size={16} />
+                        {isDayBlocked(date) ? 'Разблокировать' : 'Занят'}
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
+                    {isDayBlocked(date) && (
+                      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                        <Icon name="AlertCircle" size={20} className="text-red-600" />
+                        <div>
+                          <p className="font-medium text-red-900">День заблокирован</p>
+                          <p className="text-sm text-red-700">
+                            Клиенты не смогут записаться на этот день
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {date && weekSchedule[getDayOfWeek(date)] && (
+                      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Icon name="GraduationCap" size={20} className="text-blue-600" />
+                            <div>
+                              <p className="font-medium text-blue-900">Учеба по расписанию</p>
+                              <p className="text-sm text-blue-700">
+                                {weekSchedule[getDayOfWeek(date)]?.start} -{' '}
+                                {weekSchedule[getDayOfWeek(date)]?.end}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                            Регулярно
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
-                      {mockBookings.map((booking) => (
+                      {eventsForSelectedDate.length === 0 && !weekSchedule[getDayOfWeek(date || new Date())] && !isDayBlocked(date) && (
+                        <div className="text-center py-12 text-gray-400">
+                          <Icon name="CalendarOff" size={48} className="mx-auto mb-3" />
+                          <p>Нет событий на выбранную дату</p>
+                        </div>
+                      )}
+
+                      {eventsForSelectedDate.map((event) => (
                         <div
-                          key={booking.id}
+                          key={event.id}
                           className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors"
                         >
                           <div className="w-20 text-center">
-                            <p className="text-lg font-bold text-primary">{booking.time}</p>
-                            <p className="text-xs text-gray-500">{booking.duration} мин</p>
+                            <p className="text-lg font-bold text-primary">{event.startTime}</p>
+                            <p className="text-xs text-gray-500">{event.endTime}</p>
                           </div>
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{booking.service}</p>
-                            <p className="text-sm text-gray-500">{booking.client}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-gray-900">{event.title}</p>
+                              <Badge className={getEventTypeColor(event.type)}>
+                                {getEventTypeText(event.type)}
+                              </Badge>
+                            </div>
+                            {event.description && (
+                              <p className="text-sm text-gray-500">{event.description}</p>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <Button variant="outline" size="sm">
-                              <Icon name="Check" size={16} />
+                              <Icon name="Pencil" size={16} />
                             </Button>
-                            <Button variant="outline" size="sm">
-                              <Icon name="X" size={16} />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setCalendarEvents(
+                                  calendarEvents.filter((e) => e.id !== event.id)
+                                )
+                              }
+                            >
+                              <Icon name="Trash2" size={16} />
                             </Button>
                           </div>
                         </div>
