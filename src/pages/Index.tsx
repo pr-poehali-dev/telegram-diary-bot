@@ -86,6 +86,12 @@ const Index = () => {
     description: '',
   });
 
+  const [conflictWarning, setConflictWarning] = useState<{
+    show: boolean;
+    message: string;
+    conflicts: CalendarEvent[];
+  }>({ show: false, message: '', conflicts: [] });
+
   const mockBookings = [
     { id: 1, client: 'Анна Петрова', service: 'Маникюр', time: '10:00', status: 'confirmed', duration: 60 },
     { id: 2, client: 'Мария Иванова', service: 'Педикюр', time: '12:00', status: 'pending', duration: 90 },
@@ -160,7 +166,85 @@ const Index = () => {
     }
   };
 
-  const addEvent = () => {
+  const timeToMinutes = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const checkTimeConflict = (newStart: string, newEnd: string, existingStart: string, existingEnd: string) => {
+    const newStartMin = timeToMinutes(newStart);
+    const newEndMin = timeToMinutes(newEnd);
+    const existingStartMin = timeToMinutes(existingStart);
+    const existingEndMin = timeToMinutes(existingEnd);
+
+    return (
+      (newStartMin >= existingStartMin && newStartMin < existingEndMin) ||
+      (newEndMin > existingStartMin && newEndMin <= existingEndMin) ||
+      (newStartMin <= existingStartMin && newEndMin >= existingEndMin)
+    );
+  };
+
+  const checkConflicts = () => {
+    if (!date || !newEvent.startTime || !newEvent.endTime) return;
+
+    const conflicts: CalendarEvent[] = [];
+    const dayOfWeek = getDayOfWeek(date);
+    const studySchedule = weekSchedule[dayOfWeek];
+
+    if (studySchedule) {
+      const hasStudyConflict = checkTimeConflict(
+        newEvent.startTime,
+        newEvent.endTime,
+        studySchedule.start,
+        studySchedule.end
+      );
+
+      if (hasStudyConflict) {
+        conflicts.push({
+          id: 0,
+          date: new Date(date),
+          type: 'study',
+          title: 'Учеба',
+          startTime: studySchedule.start,
+          endTime: studySchedule.end,
+        });
+      }
+    }
+
+    const eventsOnDate = getEventsForDate(date);
+    eventsOnDate.forEach((event) => {
+      if (event.type === 'booking') {
+        const hasConflict = checkTimeConflict(
+          newEvent.startTime,
+          newEvent.endTime,
+          event.startTime,
+          event.endTime
+        );
+        if (hasConflict) {
+          conflicts.push(event);
+        }
+      }
+    });
+
+    if (conflicts.length > 0) {
+      const messages = conflicts.map((c) => {
+        if (c.type === 'study') {
+          return `• Учеба: ${c.startTime}-${c.endTime} (время будет вырезано)`;
+        }
+        return `• ${c.title}: ${c.startTime}-${c.endTime} (запись будет отменена)`;
+      });
+
+      setConflictWarning({
+        show: true,
+        message: messages.join('\n'),
+        conflicts,
+      });
+    } else {
+      addEventConfirmed();
+    }
+  };
+
+  const addEventConfirmed = () => {
     if (!date || !newEvent.title || !newEvent.startTime || !newEvent.endTime) return;
 
     const event: CalendarEvent = {
@@ -173,9 +257,18 @@ const Index = () => {
       description: newEvent.description,
     };
 
-    setCalendarEvents([...calendarEvents, event]);
+    const updatedEvents = calendarEvents.filter(
+      (e) => !conflictWarning.conflicts.some((c) => c.id === e.id && c.type === 'booking')
+    );
+
+    setCalendarEvents([...updatedEvents, event]);
     setNewEvent({ title: '', startTime: '', endTime: '', description: '' });
+    setConflictWarning({ show: false, message: '', conflicts: [] });
     setShowEventDialog(false);
+  };
+
+  const addEvent = () => {
+    checkConflicts();
   };
 
   const toggleBlockedDate = () => {
@@ -188,6 +281,23 @@ const Index = () => {
     if (isBlocked) {
       setBlockedDates(blockedDates.filter((d) => d.toDateString() !== date.toDateString()));
     } else {
+      const confirmedBookings = calendarEvents.filter(
+        (e) => e.date.toDateString() === date.toDateString() && e.type === 'booking'
+      );
+
+      if (confirmedBookings.length > 0) {
+        const confirmBlock = window.confirm(
+          `На этот день есть ${confirmedBookings.length} записей клиентов. Заблокировать день и отменить их?`
+        );
+        if (!confirmBlock) return;
+
+        setCalendarEvents(
+          calendarEvents.filter(
+            (e) => !(e.date.toDateString() === date.toDateString() && e.type === 'booking')
+          )
+        );
+      }
+
       setBlockedDates([...blockedDates, new Date(date)]);
     }
   };
@@ -580,9 +690,48 @@ const Index = () => {
                                 placeholder="Дополнительная информация..."
                               />
                             </div>
-                            <Button onClick={addEvent} className="w-full">
-                              Добавить
-                            </Button>
+                            {conflictWarning.show && (
+                              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                  <Icon name="AlertTriangle" size={20} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-yellow-900 mb-2">
+                                      Обнаружены конфликты:
+                                    </p>
+                                    <div className="text-sm text-yellow-800 whitespace-pre-line mb-3">
+                                      {conflictWarning.message}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        onClick={addEventConfirmed}
+                                        variant="default"
+                                        size="sm"
+                                      >
+                                        Продолжить
+                                      </Button>
+                                      <Button
+                                        onClick={() =>
+                                          setConflictWarning({
+                                            show: false,
+                                            message: '',
+                                            conflicts: [],
+                                          })
+                                        }
+                                        variant="outline"
+                                        size="sm"
+                                      >
+                                        Отмена
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {!conflictWarning.show && (
+                              <Button onClick={addEvent} className="w-full">
+                                Добавить
+                              </Button>
+                            )}
                           </div>
                         </DialogContent>
                       </Dialog>
