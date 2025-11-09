@@ -1,0 +1,44 @@
+{
+  "tests": [
+    {
+      "name": "Get bookings",
+      "method": "GET",
+      "path": "/?resource=bookings&owner_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "bookings": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get events",
+      "method": "GET",
+      "path": "/?resource=events&owner_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "events": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get services",
+      "method": "GET",
+      "path": "/?resource=services&owner_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "services": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get clients",
+      "method": "GET",
+      "path": "/?resource=clients&owner_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "clients": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
