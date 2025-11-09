@@ -1,39 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
+import { useAppContext } from '@/contexts/AppContext';
 
-interface DashboardTabProps {
-  stats: {
-    todayBookings: number;
-    pendingApproval: number;
-    totalClients: number;
-    workload: number;
-  };
-  mockBookings: Array<{
-    id: number;
-    client: string;
-    service: string;
-    time: string;
-    status: string;
-    duration: number;
-  }>;
-  mockClients: Array<{
-    id: number;
-    name: string;
-    visits: number;
-    lastVisit: string;
-  }>;
-  getStatusColor: (status: string) => string;
-  getStatusText: (status: string) => string;
-}
-
-const DashboardTab = ({
-  stats,
-  mockBookings,
-  mockClients,
-  getStatusColor,
-  getStatusText,
-}: DashboardTabProps) => {
+const DashboardTab = () => {
+  const { stats, mockBookings, mockClients, getStatusColor, getStatusText } = useAppContext();
   return (
     <div className="space-y-6 animate-fade-in">
       <div>

@@ -1,15 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
+import { useAppContext } from '@/contexts/AppContext';
 
-interface SidebarProps {
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-}
-
-const Sidebar = ({ sidebarOpen, setSidebarOpen, activeTab, setActiveTab }: SidebarProps) => {
+const Sidebar = () => {
+  const { sidebarOpen, setSidebarOpen, activeTab, setActiveTab } = useAppContext();
   return (
     <aside
       className={`${

@@ -13,83 +13,34 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useAppContext } from '@/contexts/AppContext';
 
-type EventType = 'study' | 'event' | 'booking';
-
-interface CalendarEvent {
-  id: number;
-  date: Date;
-  type: EventType;
-  title: string;
-  startTime: string;
-  endTime: string;
-  description?: string;
-}
-
-interface WeekSchedule {
-  [key: string]: { start: string; end: string } | null;
-}
-
-interface ScheduleTabProps {
-  date: Date | undefined;
-  setDate: (date: Date | undefined) => void;
-  showEventDialog: boolean;
-  setShowEventDialog: (show: boolean) => void;
-  showStudyDialog: boolean;
-  setShowStudyDialog: (show: boolean) => void;
-  blockedDates: Date[];
-  weekSchedule: WeekSchedule;
-  setWeekSchedule: (schedule: WeekSchedule) => void;
-  calendarEvents: CalendarEvent[];
-  setCalendarEvents: (events: CalendarEvent[]) => void;
-  newEvent: {
-    title: string;
-    startTime: string;
-    endTime: string;
-    description: string;
-  };
-  setNewEvent: (event: any) => void;
-  conflictWarning: {
-    show: boolean;
-    message: string;
-    conflicts: CalendarEvent[];
-  };
-  setConflictWarning: (warning: any) => void;
-  addEvent: () => void;
-  addEventConfirmed: () => void;
-  toggleBlockedDate: () => void;
-  getEventsForDate: (date: Date | undefined) => CalendarEvent[];
-  isDayBlocked: (date: Date | undefined) => boolean;
-  getDayOfWeek: (date: Date) => string;
-  getEventTypeColor: (type: EventType) => string;
-  getEventTypeText: (type: EventType) => string;
-}
-
-const ScheduleTab = ({
-  date,
-  setDate,
-  showEventDialog,
-  setShowEventDialog,
-  showStudyDialog,
-  setShowStudyDialog,
-  blockedDates,
-  weekSchedule,
-  setWeekSchedule,
-  calendarEvents,
-  setCalendarEvents,
-  newEvent,
-  setNewEvent,
-  conflictWarning,
-  setConflictWarning,
-  addEvent,
-  addEventConfirmed,
-  toggleBlockedDate,
-  getEventsForDate,
-  isDayBlocked,
-  getDayOfWeek,
-  getEventTypeColor,
-  getEventTypeText,
-}: ScheduleTabProps) => {
+const ScheduleTab = () => {
+  const {
+    date,
+    setDate,
+    showEventDialog,
+    setShowEventDialog,
+    showStudyDialog,
+    setShowStudyDialog,
+    blockedDates,
+    weekSchedule,
+    setWeekSchedule,
+    calendarEvents,
+    setCalendarEvents,
+    newEvent,
+    setNewEvent,
+    conflictWarning,
+    setConflictWarning,
+    addEvent,
+    addEventConfirmed,
+    toggleBlockedDate,
+    getEventsForDate,
+    isDayBlocked,
+    getDayOfWeek,
+    getEventTypeColor,
+    getEventTypeText,
+  } = useAppContext();
   const eventsForSelectedDate = getEventsForDate(date);
 
   return (

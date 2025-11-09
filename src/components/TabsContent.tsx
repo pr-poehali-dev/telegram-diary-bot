@@ -7,42 +7,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAppContext } from '@/contexts/AppContext';
 
-interface TabsContentComponentProps {
-  activeTab: string;
-  mockBookings: Array<{
-    id: number;
-    client: string;
-    service: string;
-    time: string;
-    status: string;
-    duration: number;
-  }>;
-  mockClients: Array<{
-    id: number;
-    name: string;
-    visits: number;
-    lastVisit: string;
-  }>;
-  mockServices: Array<{
-    id: number;
-    name: string;
-    duration: string;
-    price: string;
-    active: boolean;
-  }>;
-  getStatusColor: (status: string) => string;
-  getStatusText: (status: string) => string;
-}
-
-const TabsContentComponent = ({
-  activeTab,
-  mockBookings,
-  mockClients,
-  mockServices,
-  getStatusColor,
-  getStatusText,
-}: TabsContentComponentProps) => {
+const TabsContentComponent = () => {
+  const { activeTab, mockBookings, mockClients, mockServices, getStatusColor, getStatusText } = useAppContext();
   return (
     <>
       {activeTab === 'bookings' && (
