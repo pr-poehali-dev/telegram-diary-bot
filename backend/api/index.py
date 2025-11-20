@@ -181,16 +181,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             'endTime': evt['end_time'].strftime('%H:%M'),
                             'description': evt['description']
                         })
-                    
-                    return {
-                        'statusCode': 200,
-                        'headers': {
-                            'Content-Type': 'application/json',
-                            'Access-Control-Allow-Origin': '*'
-                        },
-                        'isBase64Encoded': False,
-                        'body': json.dumps({'events': result})
-                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'isBase64Encoded': False,
+                    'body': json.dumps({'events': result})
+                }
             
             elif method == 'POST':
                 try:
