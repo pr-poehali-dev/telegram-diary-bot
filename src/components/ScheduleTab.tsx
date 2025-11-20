@@ -86,7 +86,7 @@ const ScheduleTab = () => {
 
   const getBookingsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return bookings.filter(b => b.date === dateStr);
+    return bookings.filter(b => b.date === dateStr && b.status !== 'cancelled');
   };
 
   const getConflictsForDate = (date: Date) => {
