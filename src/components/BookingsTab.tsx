@@ -41,6 +41,7 @@ const BookingsTab = () => {
   
   const [showDialog, setShowDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [newBooking, setNewBooking] = useState({
     client_id: '',
     service_id: '',
@@ -100,9 +101,11 @@ const BookingsTab = () => {
     }
   };
 
-  const filteredBookings = selectedDate 
-    ? bookings.filter(b => b.date === selectedDate)
-    : bookings;
+  const filteredBookings = bookings.filter(b => {
+    const dateMatch = selectedDate ? b.date === selectedDate : true;
+    const statusMatch = selectedStatus === 'all' ? true : b.status === selectedStatus;
+    return dateMatch && statusMatch;
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -209,23 +212,41 @@ const BookingsTab = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4">
             <CardTitle>Все записи</CardTitle>
-            <div className="flex items-center gap-2">
-              <Label>Дата:</Label>
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-40"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedDate('')}
-              >
-                Все
-              </Button>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Label>Дата:</Label>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-40"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedDate('')}
+                >
+                  Все
+                </Button>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Label>Статус:</Label>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все</SelectItem>
+                    <SelectItem value="pending">Ожидают</SelectItem>
+                    <SelectItem value="confirmed">Подтверждены</SelectItem>
+                    <SelectItem value="completed">Завершены</SelectItem>
+                    <SelectItem value="cancelled">Отменены</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>
