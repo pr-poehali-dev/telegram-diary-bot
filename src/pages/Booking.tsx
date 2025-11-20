@@ -231,7 +231,14 @@ const Booking = () => {
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                     2
                   </div>
-                  <h3 className="text-lg font-semibold">Выберите дату</h3>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold">Выберите дату</h3>
+                    {selectedDate && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        {selectedDate.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="ml-10 flex justify-center">
@@ -253,28 +260,42 @@ const Booking = () => {
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
                     3
                   </div>
-                  <h3 className="text-lg font-semibold">Выберите время</h3>
+                  <div className="flex-1 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Выберите время</h3>
+                    {!loading && availableSlots.length > 0 && (
+                      <span className="text-sm text-gray-500">
+                        {availableSlots.length} {availableSlots.length === 1 ? 'свободный слот' : availableSlots.length < 5 ? 'свободных слота' : 'свободных слотов'}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
-                <div className="ml-10 grid grid-cols-4 gap-2">
+                <div className="ml-10">
                   {loading ? (
-                    <p className="col-span-4 text-center text-gray-500">Загрузка...</p>
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
                   ) : availableSlots.length === 0 ? (
-                    <p className="col-span-4 text-center text-gray-500">Нет свободных слотов</p>
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-2">Нет свободных слотов на эту дату</p>
+                      <p className="text-sm text-gray-400">Попробуйте выбрать другую дату</p>
+                    </div>
                   ) : (
-                    availableSlots.map((slot) => (
-                      <button
-                        key={slot.time}
-                        onClick={() => handleTimeSelect(slot.time)}
-                        className={`p-3 border rounded-lg transition-all ${
-                          selectedTime === slot.time
-                            ? 'border-primary bg-primary text-white'
-                            : 'border-gray-200 hover:border-primary/50'
-                        }`}
-                      >
-                        {slot.time}
-                      </button>
-                    ))
+                    <div className="grid grid-cols-4 gap-2">
+                      {availableSlots.map((slot) => (
+                        <button
+                          key={slot.time}
+                          onClick={() => handleTimeSelect(slot.time)}
+                          className={`p-3 border rounded-lg transition-all ${
+                            selectedTime === slot.time
+                              ? 'border-primary bg-primary text-white'
+                              : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                          }`}
+                        >
+                          {slot.time}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
