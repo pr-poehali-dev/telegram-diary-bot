@@ -288,7 +288,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         ))
                         
                         result = cur.fetchone()
-                        event_id = result[0] if result else None
+                        event_id = result['id'] if result else None
                     
                     conn.commit()
                     
