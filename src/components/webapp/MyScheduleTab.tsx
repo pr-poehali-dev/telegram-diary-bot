@@ -111,6 +111,20 @@ export default function MyScheduleTab() {
   };
 
   const handleAddEvent = async (force = false) => {
+    // Валидация
+    if (!newEvent.title.trim()) {
+      alert('Введите название мероприятия');
+      return;
+    }
+    if (!newEvent.event_date) {
+      alert('Выберите дату');
+      return;
+    }
+    if (!newEvent.start_time || !newEvent.end_time) {
+      alert('Укажите время начала и окончания');
+      return;
+    }
+    
     try {
       const response = await api.events.create({ ...newEvent, force });
       
@@ -132,6 +146,7 @@ export default function MyScheduleTab() {
       loadData();
     } catch (error) {
       console.error('Ошибка создания события:', error);
+      alert('Не удалось создать мероприятие. Проверьте данные.');
     }
   };
 

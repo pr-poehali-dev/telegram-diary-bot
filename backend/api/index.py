@@ -208,8 +208,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         WHERE b.owner_id = %s 
                         AND b.booking_date = %s 
                         AND b.status = 'confirmed'
-                        AND b.start_time < %s 
-                        AND b.end_time > %s
+                        AND b.start_time < %s::time 
+                        AND b.end_time > %s::time
                     ''', (
                         body_data['owner_id'],
                         body_data['event_date'],
