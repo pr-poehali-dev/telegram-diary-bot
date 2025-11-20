@@ -2,9 +2,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { useAppContext } from '@/contexts/AppContext';
+import { useBookings, useServices, useClients } from '@/hooks/useApi';
+import { useEffect, useState } from 'react';
 
 const DashboardTab = () => {
-  const { stats, mockBookings, mockClients, getStatusColor, getStatusText } = useAppContext();
+  const { getStatusColor, getStatusText } = useAppContext();
+  const { bookings, loading: loadingBookings } = useBookings();
+  const { services } = useServices();
+  const { clients, loading: loadingClients } = useClients();
+  
+  const [stats, setStats] = useState({
+    todayBookings: 0,
+    pendingApproval: 0,
+    totalClients: 0,
+    workload: 0,
+  });
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayBookings = bookings.filter(b => b.date === today);
+    const pending = bookings.filter(b => b.status === 'pending');
+    
+    setStats({
+      todayBookings: todayBookings.length,
+      pendingApproval: pending.length,
+      totalClients: clients.length,
+      workload: todayBookings.length > 0 ? Math.round((todayBookings.length / 8) * 100) : 0,
+    });
+  }, [bookings, clients]);
+
+  const todayBookingsList = bookings.filter(b => b.date === new Date().toISOString().split('T')[0]).slice(0, 4);
+  const topClients = clients.slice(0, 3);
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -73,7 +101,12 @@ const DashboardTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockBookings.map((booking) => (
+            {loadingBookings ? (
+              <p className="text-center text-gray-500">Загрузка...</p>
+            ) : todayBookingsList.length === 0 ? (
+              <p className="text-center text-gray-500">Нет записей на сегодня</p>
+            ) : (
+              todayBookingsList.map((booking) => (
               <div
                 key={booking.id}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -105,7 +138,12 @@ const DashboardTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockClients.map((client, index) => (
+            {loadingClients ? (
+              <p className="text-center text-gray-500">Загрузка...</p>
+            ) : topClients.length === 0 ? (
+              <p className="text-center text-gray-500">Нет клиентов</p>
+            ) : (
+              topClients.map((client, index) => (
               <div
                 key={client.id}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -117,7 +155,7 @@ const DashboardTab = () => {
                   <div>
                     <p className="font-medium text-gray-900">{client.name}</p>
                     <p className="text-sm text-gray-500">
-                      {client.visits} визитов • {client.lastVisit}
+                      {client.total_visits} визитов • {client.last_visit_date || 'Нет данных'}
                     </p>
                   </div>
                 </div>

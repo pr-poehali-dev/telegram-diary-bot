@@ -1,19 +1,22 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Icon from '@/components/ui/icon';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAppContext } from '@/contexts/AppContext';
+import BookingsTab from './BookingsTab';
+import ClientsTab from './ClientsTab';
+import ServicesTab from './ServicesTab';
+import SettingsTab from './SettingsTab';
 
 const TabsContentComponent = () => {
-  const { activeTab, mockBookings, mockClients, mockServices, getStatusColor, getStatusText } = useAppContext();
+  const { activeTab } = useAppContext();
   return (
     <>
-      {activeTab === 'bookings' && (
+      {activeTab === 'bookings' && <BookingsTab />}
+      {activeTab === 'clients' && <ClientsTab />}
+      {activeTab === 'services' && <ServicesTab />}
+      {activeTab === 'settings' && <SettingsTab />}
+    </>
+  );
+};
+
+export default TabsContentComponent;
         <div className="space-y-6 animate-fade-in">
           <div className="flex items-center justify-between">
             <div>
