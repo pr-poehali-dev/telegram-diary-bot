@@ -107,26 +107,27 @@ const DashboardTab = () => {
               <p className="text-center text-gray-500">Нет записей на сегодня</p>
             ) : (
               todayBookingsList.map((booking) => (
-              <div
-                key={booking.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-primary font-bold">{booking.time}</span>
+                <div
+                  key={booking.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                      <span className="text-primary font-bold">{booking.time}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{booking.client}</p>
+                      <p className="text-sm text-gray-500">
+                        {booking.service} • {booking.duration} мин
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{booking.client}</p>
-                    <p className="text-sm text-gray-500">
-                      {booking.service} • {booking.duration} мин
-                    </p>
-                  </div>
+                  <Badge className={getStatusColor(booking.status)}>
+                    {getStatusText(booking.status)}
+                  </Badge>
                 </div>
-                <Badge className={getStatusColor(booking.status)}>
-                  {getStatusText(booking.status)}
-                </Badge>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -144,23 +145,24 @@ const DashboardTab = () => {
               <p className="text-center text-gray-500">Нет клиентов</p>
             ) : (
               topClients.map((client, index) => (
-              <div
-                key={client.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                    <span className="text-accent font-bold">#{index + 1}</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{client.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {client.total_visits} визитов • {client.last_visit_date || 'Нет данных'}
-                    </p>
+                <div
+                  key={client.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
+                      <span className="text-accent font-bold">#{index + 1}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{client.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {client.total_visits} визитов • {client.last_visit_date || 'Нет данных'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
