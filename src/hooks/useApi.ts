@@ -11,7 +11,7 @@ export const useBookings = () => {
       setLoading(true);
       const response = date 
         ? await api.bookings.getByDate(date)
-        : await api.bookings.getAll();
+        : await api.bookings.getAllData();
       setBookings(response.bookings || []);
       setError(null);
     } catch (err) {

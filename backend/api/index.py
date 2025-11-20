@@ -485,6 +485,86 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'body': json.dumps({'message': 'Settings updated'})
                 }
         
+        # AVAILABLE SLOTS
+        elif resource == 'available_slots':
+            if method == 'GET':
+                owner_id = event.get('queryStringParameters', {}).get('owner_id')
+                date = event.get('queryStringParameters', {}).get('date')
+                service_id = event.get('queryStringParameters', {}).get('service_id')
+                
+                if not all([owner_id, date, service_id]):
+                    return {
+                        'statusCode': 400,
+                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                        'body': json.dumps({'error': 'owner_id, date, and service_id required'})
+                    }
+                
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    # Get service duration
+                    cur.execute('SELECT duration_minutes FROM services WHERE id = %s', (int(service_id),))
+                    service = cur.fetchone()
+                    if not service:
+                        return {
+                            'statusCode': 404,
+                            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                            'body': json.dumps({'error': 'Service not found'})
+                        }
+                    
+                    duration = service['duration_minutes']
+                    
+                    # Get settings
+                    cur.execute('SELECT key, value FROM settings WHERE owner_id = %s', (int(owner_id),))
+                    settings_rows = cur.fetchall()
+                    settings = {row['key']: row['value'] for row in settings_rows}
+                    
+                    work_start = settings.get('work_start', '10:00')
+                    work_end = settings.get('work_end', '20:00')
+                    buffer_time = int(settings.get('buffer_time', '0'))
+                    
+                    # Get existing bookings for the date
+                    cur.execute(
+                        '''
+                        SELECT start_time, end_time 
+                        FROM bookings 
+                        WHERE owner_id = %s AND booking_date = %s AND status != 'cancelled'
+                        ''',
+                        (int(owner_id), date)
+                    )
+                    bookings = cur.fetchall()
+                    
+                    # Generate time slots
+                    slots = []
+                    start_minutes = int(work_start.split(':')[0]) * 60 + int(work_start.split(':')[1])
+                    end_minutes = int(work_end.split(':')[0]) * 60 + int(work_end.split(':')[1])
+                    
+                    current = start_minutes
+                    while current + duration <= end_minutes:
+                        slot_start = f"{current // 60:02d}:{current % 60:02d}"
+                        slot_end_min = current + duration
+                        slot_end = f"{slot_end_min // 60:02d}:{slot_end_min % 60:02d}"
+                        
+                        # Check if slot conflicts with existing bookings
+                        is_available = True
+                        for booking in bookings:
+                            booking_start = str(booking['start_time'])
+                            booking_end = str(booking['end_time'])
+                            
+                            if slot_start < booking_end and slot_end > booking_start:
+                                is_available = False
+                                break
+                        
+                        if is_available:
+                            slots.append({'time': slot_start, 'available': True})
+                        
+                        current += 30  # 30-minute intervals
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'isBase64Encoded': False,
+                    'body': json.dumps({'slots': slots})
+                }
+        
         return {
             'statusCode': 400,
             'headers': {'Access-Control-Allow-Origin': '*'},

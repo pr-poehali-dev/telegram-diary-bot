@@ -34,7 +34,8 @@ async function apiRequest<T>(
 
 export const api = {
   bookings: {
-    getAll: () => apiRequest<ApiResponse<any[]>>('bookings', 'GET'),
+    getAll: `${API_URL}?resource=bookings&owner_id=${OWNER_ID}`,
+    getAllData: () => apiRequest<ApiResponse<any[]>>('bookings', 'GET'),
     getByDate: (date: string) => 
       apiRequest<ApiResponse<any[]>>(`bookings&date=${date}`, 'GET'),
     create: (booking: any) => 
