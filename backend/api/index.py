@@ -287,7 +287,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             body_data.get('description', '')
                         ))
                         
-                        event_id = cur.fetchone()[0]
+                        result = cur.fetchone()
+                        event_id = result[0] if result else None
                         conn.commit()
                         
                         return {
