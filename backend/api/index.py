@@ -524,7 +524,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # Get existing bookings for the date
                     cur.execute(
                         '''
-                        SELECT start_time, end_time 
+                        SELECT 
+                            TO_CHAR(start_time, 'HH24:MI') as start_time,
+                            TO_CHAR(end_time, 'HH24:MI') as end_time
                         FROM bookings 
                         WHERE owner_id = %s AND booking_date = %s AND status != 'cancelled'
                         ''',
@@ -537,19 +539,27 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     start_minutes = int(work_start.split(':')[0]) * 60 + int(work_start.split(':')[1])
                     end_minutes = int(work_end.split(':')[0]) * 60 + int(work_end.split(':')[1])
                     
+                    def time_to_minutes(time_str):
+                        parts = time_str.split(':')
+                        return int(parts[0]) * 60 + int(parts[1])
+                    
                     current = start_minutes
                     while current + duration <= end_minutes:
                         slot_start = f"{current // 60:02d}:{current % 60:02d}"
                         slot_end_min = current + duration
                         slot_end = f"{slot_end_min // 60:02d}:{slot_end_min % 60:02d}"
                         
+                        slot_start_min = current
+                        slot_end_minutes = slot_end_min
+                        
                         # Check if slot conflicts with existing bookings
                         is_available = True
                         for booking in bookings:
-                            booking_start = str(booking['start_time'])
-                            booking_end = str(booking['end_time'])
+                            booking_start_min = time_to_minutes(booking['start_time'])
+                            booking_end_min = time_to_minutes(booking['end_time'])
                             
-                            if slot_start < booking_end and slot_end > booking_start:
+                            # Check overlap: slot starts before booking ends AND slot ends after booking starts
+                            if slot_start_min < booking_end_min and slot_end_minutes > booking_start_min:
                                 is_available = False
                                 break
                         
