@@ -127,6 +127,7 @@ export default function MyScheduleTab() {
     
     try {
       const response = await api.events.create({ ...newEvent, force });
+      console.log('POST response:', response);
       
       if (response.conflict) {
         setConflictData(response);
@@ -148,7 +149,10 @@ export default function MyScheduleTab() {
         end_time: '11:00',
         description: '',
       });
-      loadData();
+      
+      console.log('Calling loadData...');
+      await loadData();
+      console.log('loadData completed');
     } catch (error: any) {
       console.error('Ошибка создания события:', error);
       const message = error?.message || 'Не удалось создать мероприятие';
