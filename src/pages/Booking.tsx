@@ -100,6 +100,9 @@ const Booking = () => {
 
   const handleServiceSelect = (serviceId: string) => {
     setSelectedService(serviceId);
+    setSelectedDate(undefined);
+    setAvailableSlots([]);
+    setSelectedTime('');
     setStep(2);
   };
 
