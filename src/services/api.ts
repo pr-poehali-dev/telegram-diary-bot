@@ -90,4 +90,14 @@ export const api = {
     update: (data: any) => 
       apiRequest('settings', 'PUT', { ...data, owner_id: OWNER_ID }),
   },
+
+  auth: {
+    login: async (telegramId: number) => {
+      const response = await fetch(
+        `https://functions.poehali.dev/3d742e4e-d51f-4527-8f32-f371d030cdcf?telegram_id=${telegramId}`
+      );
+      if (!response.ok) throw new Error('Auth failed');
+      return response.json();
+    },
+  },
 };

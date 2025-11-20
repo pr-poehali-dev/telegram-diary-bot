@@ -431,6 +431,60 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'body': json.dumps({'id': client_id, 'message': 'Client created'})
                     }
         
+        # SETTINGS
+        elif resource == 'settings':
+            if method == 'GET':
+                owner_id = event.get('queryStringParameters', {}).get('owner_id', '1')
+                
+                with conn.cursor() as cur:
+                    cur.execute('SELECT key, value FROM settings WHERE owner_id = %s', (int(owner_id),))
+                    rows = cur.fetchall()
+                    
+                    settings = {}
+                    for row in rows:
+                        key, value = row
+                        settings[key] = value
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'isBase64Encoded': False,
+                    'body': json.dumps({'settings': settings})
+                }
+            
+            elif method == 'PUT':
+                body_data = json.loads(event.get('body', '{}'))
+                owner_id = body_data.get('owner_id', '1')
+                
+                with conn.cursor() as cur:
+                    for key, value in body_data.items():
+                        if key == 'owner_id':
+                            continue
+                            
+                        cur.execute(
+                            '''
+                            INSERT INTO settings (owner_id, key, value)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (owner_id, key) 
+                            DO UPDATE SET value = EXCLUDED.value
+                            ''',
+                            (int(owner_id), key, str(value))
+                        )
+                    conn.commit()
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'isBase64Encoded': False,
+                    'body': json.dumps({'message': 'Settings updated'})
+                }
+        
         return {
             'statusCode': 400,
             'headers': {'Access-Control-Allow-Origin': '*'},

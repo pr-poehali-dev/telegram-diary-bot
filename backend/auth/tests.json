@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Get user by telegram_id",
+      "method": "GET",
+      "path": "/?telegram_id=123456789",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "user": {
+          "id": 1,
+          "telegram_id": 123456789,
+          "role": "owner"
+        }
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing telegram_id",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
