@@ -74,14 +74,16 @@ export const api = {
 
   schedule: {
     getWeek: () => apiRequest<ApiResponse<any[]>>('week_schedule', 'GET'),
-    update: (data: any[]) => 
-      apiRequest('week_schedule', 'PUT', { schedule: data, owner_id: OWNER_ID }),
+    create: (schedule: any) => 
+      apiRequest('week_schedule', 'POST', { ...schedule, owner_id: OWNER_ID }),
+    delete: (id: number) => 
+      apiRequest('week_schedule', 'DELETE', { id }),
   },
 
   blockedDates: {
     getAll: () => apiRequest<ApiResponse<any[]>>('blocked_dates', 'GET'),
-    add: (date: string, reason: string) => 
-      apiRequest('blocked_dates', 'POST', { date, reason, owner_id: OWNER_ID }),
+    add: (date: string, force?: boolean) => 
+      apiRequest('blocked_dates', 'POST', { date, force, owner_id: OWNER_ID }),
     remove: (id: number) => 
       apiRequest('blocked_dates', 'DELETE', { id }),
   },

@@ -11,6 +11,7 @@ const Sidebar = () => {
   const menuItems = [
     { id: 'dashboard', icon: 'LayoutDashboard', label: 'Дашборд', roles: ['admin', 'owner'] },
     { id: 'schedule', icon: 'Calendar', label: 'Расписание', roles: ['owner'] },
+    { id: 'my-schedule', icon: 'CalendarDays', label: 'Моё расписание', roles: ['owner'] },
     { id: 'bookings', icon: 'ClipboardList', label: 'Записи', roles: ['admin', 'owner'] },
     { id: 'clients', icon: 'Users', label: 'Клиенты', roles: ['admin', 'owner'] },
     { id: 'services', icon: 'Briefcase', label: 'Услуги', roles: ['admin', 'owner'] },

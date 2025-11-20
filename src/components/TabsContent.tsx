@@ -3,6 +3,7 @@ import BookingsTab from './BookingsTab';
 import ClientsTab from './ClientsTab';
 import ServicesTab from './ServicesTab';
 import SettingsTab from './SettingsTab';
+import MyScheduleTab from './webapp/MyScheduleTab';
 
 const TabsContentComponent = () => {
   const { activeTab } = useAppContext();
@@ -12,6 +13,7 @@ const TabsContentComponent = () => {
       {activeTab === 'clients' && <ClientsTab />}
       {activeTab === 'services' && <ServicesTab />}
       {activeTab === 'settings' && <SettingsTab />}
+      {activeTab === 'my-schedule' && <MyScheduleTab />}
     </>
   );
 };
