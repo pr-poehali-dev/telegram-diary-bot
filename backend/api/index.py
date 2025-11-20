@@ -289,17 +289,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         
                         result = cur.fetchone()
                         event_id = result[0] if result else None
-                        conn.commit()
-                        
-                        return {
-                            'statusCode': 201,
-                            'headers': {
-                                'Content-Type': 'application/json',
-                                'Access-Control-Allow-Origin': '*'
-                            },
-                            'isBase64Encoded': False,
-                            'body': json.dumps({'id': event_id, 'message': 'Event created'})
-                        }
+                    
+                    conn.commit()
+                    
+                    return {
+                        'statusCode': 201,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'isBase64Encoded': False,
+                        'body': json.dumps({'id': event_id, 'message': 'Event created'})
+                    }
                 except Exception as e:
                     import traceback
                     error_msg = str(e) if str(e) else repr(e)
