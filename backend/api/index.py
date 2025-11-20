@@ -193,94 +193,121 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     }
             
             elif method == 'POST':
-                body_data = json.loads(event.get('body', '{}'))
-                
-                with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                    # Проверяем конфликты с подтверждёнными записями клиентов
-                    cur.execute('''
-                        SELECT b.id, u.name as client_name, s.name as service_name, 
-                               TO_CHAR(b.start_time, 'HH24:MI') as start_time,
-                               TO_CHAR(b.end_time, 'HH24:MI') as end_time
-                        FROM bookings b
-                        LEFT JOIN clients c ON b.client_id = c.id
-                        LEFT JOIN users u ON c.user_id = u.id
-                        LEFT JOIN services s ON b.service_id = s.id
-                        WHERE b.owner_id = %s 
-                        AND b.booking_date = %s 
-                        AND b.status = 'confirmed'
-                        AND b.start_time < %s::time 
-                        AND b.end_time > %s::time
-                    ''', (
-                        body_data['owner_id'],
-                        body_data['event_date'],
-                        body_data['end_time'],
-                        body_data['start_time']
-                    ))
+                try:
+                    body_data = json.loads(event.get('body', '{}'))
                     
-                    conflicting_bookings = cur.fetchall()
-                    
-                    if conflicting_bookings and not body_data.get('force', False):
-                        conflicts = []
-                        for booking in conflicting_bookings:
-                            conflicts.append({
-                                'id': booking['id'],
-                                'client': booking['client_name'],
-                                'service': booking['service_name'],
-                                'startTime': booking['start_time'],
-                                'endTime': booking['end_time']
-                            })
-                        
+                    # Валидация обязательных полей
+                    required_fields = ['owner_id', 'event_date', 'start_time', 'end_time', 'title', 'event_type']
+                    missing = [f for f in required_fields if f not in body_data or not body_data[f]]
+                    if missing:
                         return {
-                            'statusCode': 409,
+                            'statusCode': 400,
                             'headers': {
                                 'Content-Type': 'application/json',
                                 'Access-Control-Allow-Origin': '*'
                             },
                             'isBase64Encoded': False,
                             'body': json.dumps({
-                                'conflict': True,
-                                'bookings': conflicts,
-                                'message': 'Событие конфликтует с подтверждёнными записями'
+                                'error': f'Missing required fields: {", ".join(missing)}'
                             })
                         }
                     
-                    # Если force=true, отменяем конфликтующие записи
-                    if body_data.get('force', False) and conflicting_bookings:
-                        booking_ids = [b['id'] for b in conflicting_bookings]
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        # Проверяем конфликты с подтверждёнными записями клиентов
                         cur.execute('''
-                            UPDATE bookings 
-                            SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
-                            WHERE id = ANY(%s)
-                        ''', (booking_ids,))
-                    
-                    # Создаём событие
-                    query = '''
-                        INSERT INTO calendar_events 
-                        (owner_id, event_type, title, event_date, start_time, end_time, description)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        RETURNING id
-                    '''
-                    cur.execute(query, (
-                        body_data['owner_id'],
-                        body_data['event_type'],
-                        body_data['title'],
-                        body_data['event_date'],
-                        body_data['start_time'],
-                        body_data['end_time'],
-                        body_data.get('description', '')
-                    ))
-                    
-                    event_id = cur.fetchone()[0]
-                    conn.commit()
-                    
+                            SELECT b.id, u.name as client_name, s.name as service_name, 
+                                   TO_CHAR(b.start_time, 'HH24:MI') as start_time,
+                                   TO_CHAR(b.end_time, 'HH24:MI') as end_time
+                            FROM bookings b
+                            LEFT JOIN clients c ON b.client_id = c.id
+                            LEFT JOIN users u ON c.user_id = u.id
+                            LEFT JOIN services s ON b.service_id = s.id
+                            WHERE b.owner_id = %s 
+                            AND b.booking_date = %s 
+                            AND b.status = 'confirmed'
+                            AND b.start_time < %s::time 
+                            AND b.end_time > %s::time
+                        ''', (
+                            body_data['owner_id'],
+                            body_data['event_date'],
+                            body_data['end_time'],
+                            body_data['start_time']
+                        ))
+                        
+                        conflicting_bookings = cur.fetchall()
+                        
+                        if conflicting_bookings and not body_data.get('force', False):
+                            conflicts = []
+                            for booking in conflicting_bookings:
+                                conflicts.append({
+                                    'id': booking['id'],
+                                    'client': booking['client_name'],
+                                    'service': booking['service_name'],
+                                    'startTime': booking['start_time'],
+                                    'endTime': booking['end_time']
+                                })
+                            
+                            return {
+                                'statusCode': 409,
+                                'headers': {
+                                    'Content-Type': 'application/json',
+                                    'Access-Control-Allow-Origin': '*'
+                                },
+                                'isBase64Encoded': False,
+                                'body': json.dumps({
+                                    'conflict': True,
+                                    'bookings': conflicts,
+                                    'message': 'Событие конфликтует с подтверждёнными записями'
+                                })
+                            }
+                        
+                        # Если force=true, отменяем конфликтующие записи
+                        if body_data.get('force', False) and conflicting_bookings:
+                            booking_ids = [b['id'] for b in conflicting_bookings]
+                            cur.execute('''
+                                UPDATE bookings 
+                                SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+                                WHERE id = ANY(%s)
+                            ''', (booking_ids,))
+                        
+                        # Создаём событие
+                        query = '''
+                            INSERT INTO calendar_events 
+                            (owner_id, event_type, title, event_date, start_time, end_time, description)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            RETURNING id
+                        '''
+                        cur.execute(query, (
+                            body_data['owner_id'],
+                            body_data['event_type'],
+                            body_data['title'],
+                            body_data['event_date'],
+                            body_data['start_time'],
+                            body_data['end_time'],
+                            body_data.get('description', '')
+                        ))
+                        
+                        event_id = cur.fetchone()[0]
+                        conn.commit()
+                        
+                        return {
+                            'statusCode': 201,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'isBase64Encoded': False,
+                            'body': json.dumps({'id': event_id, 'message': 'Event created'})
+                        }
+                except Exception as e:
                     return {
-                        'statusCode': 201,
+                        'statusCode': 500,
                         'headers': {
                             'Content-Type': 'application/json',
                             'Access-Control-Allow-Origin': '*'
                         },
                         'isBase64Encoded': False,
-                        'body': json.dumps({'id': event_id, 'message': 'Event created'})
+                        'body': json.dumps({'error': f'Server error: {str(e)}'})
                     }
             
             elif method == 'DELETE':
