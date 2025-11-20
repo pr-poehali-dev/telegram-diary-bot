@@ -263,22 +263,46 @@ const BookingsTab = () => {
                     <TableCell>
                       <div className="flex gap-2">
                         {booking.status === 'pending' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStatusChange(booking.id, 'confirmed')}
-                          >
-                            Подтвердить
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStatusChange(booking.id, 'confirmed')}
+                            >
+                              Подтвердить
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleStatusChange(booking.id, 'cancelled')}
+                            >
+                              Отменить
+                            </Button>
+                          </>
                         )}
                         {booking.status === 'confirmed' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStatusChange(booking.id, 'completed')}
-                          >
-                            Завершить
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStatusChange(booking.id, 'completed')}
+                            >
+                              Завершить
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleStatusChange(booking.id, 'cancelled')}
+                            >
+                              Отменить
+                            </Button>
+                          </>
+                        )}
+                        {booking.status === 'completed' && (
+                          <span className="text-sm text-gray-500">Завершена</span>
+                        )}
+                        {booking.status === 'cancelled' && (
+                          <span className="text-sm text-gray-500">Отменена</span>
                         )}
                       </div>
                     </TableCell>
