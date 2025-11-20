@@ -300,6 +300,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             'body': json.dumps({'id': event_id, 'message': 'Event created'})
                         }
                 except Exception as e:
+                    import traceback
+                    error_msg = str(e) if str(e) else repr(e)
+                    error_trace = traceback.format_exc()
+                    print(f'ERROR creating event: {error_msg}')
+                    print(f'Traceback: {error_trace}')
                     return {
                         'statusCode': 500,
                         'headers': {
@@ -307,7 +312,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             'Access-Control-Allow-Origin': '*'
                         },
                         'isBase64Encoded': False,
-                        'body': json.dumps({'error': f'Server error: {str(e)}'})
+                        'body': json.dumps({
+                            'error': f'Server error: {error_msg}',
+                            'type': type(e).__name__,
+                            'trace': error_trace[:500]
+                        })
                     }
             
             elif method == 'DELETE':
