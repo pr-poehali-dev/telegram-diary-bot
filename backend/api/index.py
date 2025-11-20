@@ -519,7 +519,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     
                     work_start = settings.get('work_start', '10:00')
                     work_end = settings.get('work_end', '20:00')
+                    prep_time = int(settings.get('prep_time', '0'))
                     buffer_time = int(settings.get('buffer_time', '0'))
+                    
+                    # Total time needed: prep + service + buffer
+                    total_time_needed = prep_time + duration + buffer_time
                     
                     # Get existing bookings for the date
                     cur.execute(
@@ -543,14 +547,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         parts = time_str.split(':')
                         return int(parts[0]) * 60 + int(parts[1])
                     
-                    current = start_minutes
-                    while current + duration <= end_minutes:
+                    # Start from position where we have space for prep_time before the first slot
+                    current = start_minutes + prep_time
+                    
+                    while current + duration + buffer_time <= end_minutes:
+                        # Slot start time (this is what client sees - actual session start)
                         slot_start = f"{current // 60:02d}:{current % 60:02d}"
-                        slot_end_min = current + duration
-                        slot_end = f"{slot_end_min // 60:02d}:{slot_end_min % 60:02d}"
                         
-                        slot_start_min = current
-                        slot_end_minutes = slot_end_min
+                        # Actual occupied time: prep BEFORE + service + buffer AFTER
+                        actual_start_min = current - prep_time
+                        actual_end_min = current + duration + buffer_time
                         
                         # Check if slot conflicts with existing bookings
                         is_available = True
@@ -558,8 +564,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             booking_start_min = time_to_minutes(booking['start_time'])
                             booking_end_min = time_to_minutes(booking['end_time'])
                             
-                            # Check overlap: slot starts before booking ends AND slot ends after booking starts
-                            if slot_start_min < booking_end_min and slot_end_minutes > booking_start_min:
+                            # Check overlap with the full occupied period (prep + service + buffer)
+                            if actual_start_min < booking_end_min and actual_end_min > booking_start_min:
                                 is_available = False
                                 break
                         

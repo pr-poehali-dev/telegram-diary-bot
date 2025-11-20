@@ -40,6 +40,7 @@ const Booking = () => {
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState({ prep_time: 0, buffer_time: 0 });
   
   const [clientData, setClientData] = useState({
     name: '',
@@ -49,6 +50,7 @@ const Booking = () => {
 
   useEffect(() => {
     loadServices();
+    loadSettings();
   }, []);
 
   const loadServices = async () => {
@@ -61,6 +63,21 @@ const Booking = () => {
         description: 'Не удалось загрузить услуги',
         variant: 'destructive',
       });
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
+      const response = await fetch(`${API_URL}?resource=settings&owner_id=${ownerId}`);
+      const data = await response.json();
+      const settingsData = data.settings || {};
+      setSettings({
+        prep_time: Number(settingsData.prep_time) || 0,
+        buffer_time: Number(settingsData.buffer_time) || 0,
+      });
+    } catch (error) {
+      console.error('Failed to load settings:', error);
     }
   };
 
@@ -136,11 +153,19 @@ const Booking = () => {
       const service = services.find(s => s.id === Number(selectedService));
       const durationMinutes = parseInt(service?.duration || '60');
       
+      // Calculate actual start time (selected time - prep_time)
       const [hours, minutes] = selectedTime.split(':');
-      const totalMinutes = parseInt(hours) * 60 + parseInt(minutes) + durationMinutes;
-      const endHours = Math.floor(totalMinutes / 60);
-      const endMinutes = totalMinutes % 60;
-      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+      const selectedMinutes = parseInt(hours) * 60 + parseInt(minutes);
+      const actualStartMinutes = selectedMinutes - settings.prep_time;
+      const actualEndMinutes = selectedMinutes + durationMinutes + settings.buffer_time;
+      
+      const startHours = Math.floor(actualStartMinutes / 60);
+      const startMins = actualStartMinutes % 60;
+      const startTime = `${String(startHours).padStart(2, '0')}:${String(startMins).padStart(2, '0')}`;
+      
+      const endHours = Math.floor(actualEndMinutes / 60);
+      const endMins = actualEndMinutes % 60;
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
       // Create client first
       const clientResponse = await api.clients.create({
@@ -150,12 +175,12 @@ const Booking = () => {
         owner_id: ownerId,
       });
 
-      // Create booking
+      // Create booking with prep and buffer time included
       await api.bookings.create({
         client_id: clientResponse.id,
         service_id: selectedService,
         booking_date: selectedDate.toISOString().split('T')[0],
-        start_time: selectedTime,
+        start_time: startTime,
         end_time: endTime,
         status: 'pending',
       });
