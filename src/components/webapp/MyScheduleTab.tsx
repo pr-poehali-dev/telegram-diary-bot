@@ -60,7 +60,7 @@ export default function MyScheduleTab() {
   });
   
   const [newEvent, setNewEvent] = useState({
-    event_type: 'personal',
+    event_type: 'event',
     title: '',
     event_date: '',
     start_time: '10:00',
@@ -141,7 +141,7 @@ export default function MyScheduleTab() {
       
       setShowAddEvent(false);
       setNewEvent({
-        event_type: 'personal',
+        event_type: 'event',
         title: '',
         event_date: '',
         start_time: '10:00',
