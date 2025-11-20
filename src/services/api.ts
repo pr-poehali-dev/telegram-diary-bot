@@ -30,9 +30,15 @@ async function apiRequest<T>(
 
   const response = await fetch(url, options);
   
-  // Для 409 (конфликт) возвращаем JSON, не бросаем ошибку
-  if (response.status === 409) {
-    return response.json();
+  // Для 409 (конфликт) и 500 (ошибка с деталями) возвращаем JSON
+  if (response.status === 409 || response.status === 500 || response.status === 400) {
+    try {
+      return await response.json();
+    } catch {
+      // Если не JSON, бросаем ошибку
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}: ${text}`);
+    }
   }
   
   if (!response.ok) {

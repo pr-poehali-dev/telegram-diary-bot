@@ -134,6 +134,11 @@ export default function MyScheduleTab() {
         return;
       }
       
+      if (response.error) {
+        alert(`Ошибка: ${response.error}`);
+        return;
+      }
+      
       setShowAddEvent(false);
       setNewEvent({
         event_type: 'personal',
@@ -144,9 +149,10 @@ export default function MyScheduleTab() {
         description: '',
       });
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка создания события:', error);
-      alert('Не удалось создать мероприятие. Проверьте данные.');
+      const message = error?.message || 'Не удалось создать мероприятие';
+      alert(message);
     }
   };
 
