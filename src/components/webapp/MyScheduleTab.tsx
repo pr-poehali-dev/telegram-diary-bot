@@ -322,6 +322,22 @@ export default function MyScheduleTab() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
+                    <Label>Тип события</Label>
+                    <Select
+                      value={newEvent.event_type}
+                      onValueChange={(value) => setNewEvent({ ...newEvent, event_type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="event">Мероприятие</SelectItem>
+                        <SelectItem value="study">Учёба</SelectItem>
+                        <SelectItem value="booking">Бронирование</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label>Название</Label>
                     <Input
                       value={newEvent.title}
@@ -380,7 +396,11 @@ export default function MyScheduleTab() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{event.title}</p>
-                        <Badge variant="secondary">{event.type}</Badge>
+                        <Badge variant="secondary">
+                          {event.type === 'event' ? 'Мероприятие' : 
+                           event.type === 'study' ? 'Учёба' : 
+                           event.type === 'booking' ? 'Бронирование' : event.type}
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {event.date} • {event.startTime} - {event.endTime}
