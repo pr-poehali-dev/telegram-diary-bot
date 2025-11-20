@@ -61,6 +61,20 @@ const ScheduleTab = () => {
     return weekSchedule[dayName];
   };
 
+  const parseTime = (timeStr: string): string => {
+    if (!timeStr) return '00:00';
+    if (timeStr.includes(':')) return timeStr.substring(0, 5);
+    return timeStr;
+  };
+
+  const calculateEndTime = (startTime: string, duration: number): string => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + duration;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+  };
+
   const checkTimeConflict = (
     time1Start: string,
     time1End: string,
@@ -80,15 +94,19 @@ const ScheduleTab = () => {
     if (!studySchedule) return [];
 
     const dayBookings = getBookingsForDate(date);
-    return dayBookings.filter(booking => 
-      booking.status === 'confirmed' &&
-      checkTimeConflict(
-        booking.start_time || booking.time.split('-')[0],
-        booking.end_time || booking.time.split('-')[1],
+    return dayBookings.filter(booking => {
+      if (booking.status !== 'confirmed') return false;
+      
+      const startTime = parseTime(booking.time);
+      const endTime = calculateEndTime(startTime, booking.duration || 60);
+      
+      return checkTimeConflict(
+        startTime,
+        endTime,
         studySchedule.start,
         studySchedule.end
-      )
-    );
+      );
+    });
   };
 
   const selectedDateBookings = getBookingsForDate(date);
@@ -260,13 +278,13 @@ const ScheduleTab = () => {
                 <div className="space-y-3">
                   {selectedDateBookings
                     .sort((a, b) => {
-                      const timeA = a.start_time || a.time.split('-')[0];
-                      const timeB = b.start_time || b.time.split('-')[0];
+                      const timeA = parseTime(a.time);
+                      const timeB = parseTime(b.time);
                       return timeA.localeCompare(timeB);
                     })
                     .map((booking) => {
-                      const startTime = booking.start_time || booking.time.split('-')[0];
-                      const endTime = booking.end_time || booking.time.split('-')[1];
+                      const startTime = parseTime(booking.time);
+                      const endTime = calculateEndTime(startTime, booking.duration || 60);
                       const hasConflict = selectedDateConflicts.some(c => c.id === booking.id);
                       
                       return (
@@ -286,10 +304,10 @@ const ScheduleTab = () => {
                                 <span className={`text-lg font-bold ${
                                   hasConflict ? 'text-red-600' : 'text-primary'
                                 }`}>
-                                  {startTime.substring(0, 5)}
+                                  {startTime}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                  {endTime.substring(0, 5)}
+                                  {endTime}
                                 </span>
                               </div>
                               <div>
