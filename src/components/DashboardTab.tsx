@@ -31,7 +31,7 @@ const DashboardTab = () => {
     });
   }, [bookings, clients]);
 
-  const todayBookingsList = bookings.filter(b => b.date === new Date().toISOString().split('T')[0]).slice(0, 4);
+  const todayBookingsList = bookings.filter(b => b.date === new Date().toISOString().split('T')[0] && b.status !== 'cancelled');
   const topClients = clients.slice(0, 3);
   return (
     <div className="space-y-6 animate-fade-in">
@@ -100,33 +100,35 @@ const DashboardTab = () => {
               Записи на сегодня
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent>
             {loadingBookings ? (
               <p className="text-center text-gray-500">Загрузка...</p>
             ) : todayBookingsList.length === 0 ? (
               <p className="text-center text-gray-500">Нет записей на сегодня</p>
             ) : (
-              todayBookingsList.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <span className="text-primary font-bold">{booking.time}</span>
+              <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2">
+                {todayBookingsList.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                        <span className="text-primary font-bold">{booking.time}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{booking.client}</p>
+                        <p className="text-sm text-gray-500">
+                          {booking.service} • {booking.duration} мин
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{booking.client}</p>
-                      <p className="text-sm text-gray-500">
-                        {booking.service} • {booking.duration} мин
-                      </p>
-                    </div>
+                    <Badge className={getStatusColor(booking.status)}>
+                      {getStatusText(booking.status)}
+                    </Badge>
                   </div>
-                  <Badge className={getStatusColor(booking.status)}>
-                    {getStatusText(booking.status)}
-                  </Badge>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
