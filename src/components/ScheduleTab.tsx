@@ -28,15 +28,38 @@ const ScheduleTab = () => {
   
   const [date, setDate] = useState<Date>(new Date());
   const [showStudyDialog, setShowStudyDialog] = useState(false);
-  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>({
-    monday: { start: '09:00', end: '15:00' },
-    tuesday: { start: '09:00', end: '15:00' },
-    wednesday: { start: '09:00', end: '15:00' },
-    thursday: { start: '09:00', end: '15:00' },
-    friday: { start: '09:00', end: '15:00' },
-    saturday: null,
-    sunday: null,
-  });
+  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>({});
+  const [events, setEvents] = useState<any[]>([]);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadScheduleData();
+  }, []);
+
+  const loadScheduleData = async () => {
+    try {
+      const [scheduleRes, eventsRes, blockedRes] = await Promise.all([
+        api.schedule.getWeek(),
+        api.events.getAll(),
+        api.blockedDates.getAll(),
+      ]);
+      
+      // Преобразуем данные расписания в формат WeekSchedule
+      const scheduleMap: WeekSchedule = {};
+      (scheduleRes.schedule || []).forEach((item: any) => {
+        scheduleMap[item.dayOfWeek] = {
+          start: item.startTime,
+          end: item.endTime,
+        };
+      });
+      
+      setWeekSchedule(scheduleMap);
+      setEvents(eventsRes.events || []);
+      setBlockedDates((blockedRes.blockedDates || []).map((b: any) => b.date));
+    } catch (error) {
+      console.error('Ошибка загрузки данных расписания:', error);
+    }
+  };
 
   const getDayOfWeek = (date: Date): string => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -109,9 +132,21 @@ const ScheduleTab = () => {
     });
   };
 
+  const getEventsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return events.filter(e => e.date === dateStr);
+  };
+
+  const isDateBlocked = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return blockedDates.includes(dateStr);
+  };
+
   const selectedDateBookings = getBookingsForDate(date);
   const selectedDateConflicts = getConflictsForDate(date);
   const studyForSelectedDate = getStudyScheduleForDate(date);
+  const selectedDateEvents = getEventsForDate(date);
+  const isSelectedDateBlocked = isDateBlocked(date);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -201,6 +236,8 @@ const ScheduleTab = () => {
                   const dateStr = day.toISOString().split('T')[0];
                   return bookings.some(b => b.date === dateStr);
                 },
+                hasEvents: (day) => getEventsForDate(day).length > 0,
+                isBlocked: (day) => isDateBlocked(day),
                 hasConflict: (day) => getConflictsForDate(day).length > 0,
               }}
               modifiersStyles={{
@@ -212,6 +249,17 @@ const ScheduleTab = () => {
                   backgroundColor: '#e9d5ff',
                   color: '#6b21a8',
                   fontWeight: 'bold',
+                },
+                hasEvents: {
+                  backgroundColor: '#fae8ff',
+                  color: '#7e22ce',
+                  fontWeight: 'bold',
+                },
+                isBlocked: {
+                  backgroundColor: '#fecaca',
+                  color: '#7f1d1d',
+                  fontWeight: 'bold',
+                  textDecoration: 'line-through',
                 },
                 hasConflict: {
                   backgroundColor: '#fee2e2',
@@ -228,6 +276,14 @@ const ScheduleTab = () => {
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
                 <span>Есть записи</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-4 h-4 bg-fuchsia-100 border border-fuchsia-300 rounded"></div>
+                <span>Мероприятия</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-4 h-4 bg-red-200 border border-red-400 rounded"></div>
+                <span>Заблокирован</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
@@ -249,6 +305,15 @@ const ScheduleTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isSelectedDateBlocked && (
+              <Alert className="border-red-200 bg-red-50">
+                <Icon name="Ban" size={16} className="text-red-600" />
+                <AlertDescription className="ml-2">
+                  <strong>День заблокирован!</strong> Новые записи недоступны
+                </AlertDescription>
+              </Alert>
+            )}
+
             {studyForSelectedDate && (
               <Alert className="border-blue-200 bg-blue-50">
                 <Icon name="GraduationCap" size={16} className="text-blue-600" />
@@ -256,6 +321,21 @@ const ScheduleTab = () => {
                   <strong>Учёба:</strong> {studyForSelectedDate.start} - {studyForSelectedDate.end}
                 </AlertDescription>
               </Alert>
+            )}
+
+            {selectedDateEvents.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-gray-700">Мероприятия:</h4>
+                {selectedDateEvents.map((event) => (
+                  <Alert key={event.id} className="border-purple-200 bg-purple-50">
+                    <Icon name="Calendar" size={16} className="text-purple-600" />
+                    <AlertDescription className="ml-2">
+                      <strong>{event.title}:</strong> {event.startTime} - {event.endTime}
+                      {event.description && <p className="text-xs mt-1">{event.description}</p>}
+                    </AlertDescription>
+                  </Alert>
+                ))}
+              </div>
             )}
 
             {selectedDateConflicts.length > 0 && (

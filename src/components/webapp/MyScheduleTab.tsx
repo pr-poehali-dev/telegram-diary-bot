@@ -117,26 +117,21 @@ export default function MyScheduleTab() {
       if (response.conflict) {
         setConflictData(response);
         setShowConflict(true);
-      } else {
-        setShowAddEvent(false);
-        setNewEvent({
-          event_type: 'personal',
-          title: '',
-          event_date: '',
-          start_time: '10:00',
-          end_time: '11:00',
-          description: '',
-        });
-        loadData();
+        return;
       }
-    } catch (error: any) {
-      if (error.message.includes('409')) {
-        const errorData = JSON.parse(error.message.split('Response: ')[1] || '{}');
-        setConflictData(errorData);
-        setShowConflict(true);
-      } else {
-        console.error('Ошибка создания события:', error);
-      }
+      
+      setShowAddEvent(false);
+      setNewEvent({
+        event_type: 'personal',
+        title: '',
+        event_date: '',
+        start_time: '10:00',
+        end_time: '11:00',
+        description: '',
+      });
+      loadData();
+    } catch (error) {
+      console.error('Ошибка создания события:', error);
     }
   };
 
@@ -156,19 +151,14 @@ export default function MyScheduleTab() {
       if (response.conflict) {
         setConflictData(response);
         setShowConflict(true);
-      } else {
-        setShowBlockDate(false);
-        setBlockDate('');
-        loadData();
+        return;
       }
-    } catch (error: any) {
-      if (error.message.includes('409')) {
-        const errorData = JSON.parse(error.message.split('Response: ')[1] || '{}');
-        setConflictData(errorData);
-        setShowConflict(true);
-      } else {
-        console.error('Ошибка блокировки даты:', error);
-      }
+      
+      setShowBlockDate(false);
+      setBlockDate('');
+      loadData();
+    } catch (error) {
+      console.error('Ошибка блокировки даты:', error);
     }
   };
 

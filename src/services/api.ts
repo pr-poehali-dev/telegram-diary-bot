@@ -10,7 +10,12 @@ async function apiRequest<T>(
   method: string = 'GET',
   body?: any
 ): Promise<T> {
-  const url = `${API_URL}?resource=${resource}&owner_id=${OWNER_ID}`;
+  let url = `${API_URL}?resource=${resource}&owner_id=${OWNER_ID}`;
+  
+  // Для DELETE добавляем id в URL, если есть
+  if (method === 'DELETE' && body?.id) {
+    url += `&id=${body.id}`;
+  }
   
   const options: RequestInit = {
     method,
@@ -25,8 +30,14 @@ async function apiRequest<T>(
 
   const response = await fetch(url, options);
   
+  // Для 409 (конфликт) возвращаем JSON, не бросаем ошибку
+  if (response.status === 409) {
+    return response.json();
+  }
+  
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    const text = await response.text();
+    throw new Error(`HTTP ${response.status} : ${url}\nResponse: ${text}`);
   }
 
   return response.json();
