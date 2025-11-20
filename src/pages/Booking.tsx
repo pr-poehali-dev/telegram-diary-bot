@@ -69,12 +69,25 @@ const Booking = () => {
     try {
       const dateStr = date.toISOString().split('T')[0];
       const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
-      const response = await fetch(
-        `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}`
-      );
+      const url = `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}`;
+      
+      console.log('Loading slots from:', url);
+      
+      const response = await fetch(url);
       const data = await response.json();
+      
+      console.log('Received slots:', data.slots);
+      
       setAvailableSlots(data.slots || []);
+      
+      if (!data.slots || data.slots.length === 0) {
+        toast({
+          title: 'Нет свободных слотов',
+          description: 'Выберите другую дату',
+        });
+      }
     } catch (error) {
+      console.error('Error loading slots:', error);
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить свободные слоты',
@@ -93,6 +106,8 @@ const Booking = () => {
   const handleDateSelect = (date: Date | undefined) => {
     if (date && selectedService) {
       setSelectedDate(date);
+      setAvailableSlots([]);
+      setSelectedTime('');
       loadAvailableSlots(date, selectedService);
       setStep(3);
     }
