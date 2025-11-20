@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,36 +13,87 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { useAppContext } from '@/contexts/AppContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useBookings } from '@/hooks/useApi';
+import { api } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
+
+interface WeekSchedule {
+  [key: string]: { start: string; end: string } | null;
+}
 
 const ScheduleTab = () => {
-  const {
-    date,
-    setDate,
-    showEventDialog,
-    setShowEventDialog,
-    showStudyDialog,
-    setShowStudyDialog,
-    blockedDates,
-    weekSchedule,
-    setWeekSchedule,
-    calendarEvents,
-    setCalendarEvents,
-    newEvent,
-    setNewEvent,
-    conflictWarning,
-    setConflictWarning,
-    addEvent,
-    addEventConfirmed,
-    toggleBlockedDate,
-    getEventsForDate,
-    isDayBlocked,
-    getDayOfWeek,
-    getEventTypeColor,
-    getEventTypeText,
-  } = useAppContext();
-  const eventsForSelectedDate = getEventsForDate(date);
+  const { bookings, reload } = useBookings();
+  const { toast } = useToast();
+  
+  const [date, setDate] = useState<Date>(new Date());
+  const [showStudyDialog, setShowStudyDialog] = useState(false);
+  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>({
+    monday: { start: '09:00', end: '15:00' },
+    tuesday: { start: '09:00', end: '15:00' },
+    wednesday: { start: '09:00', end: '15:00' },
+    thursday: { start: '09:00', end: '15:00' },
+    friday: { start: '09:00', end: '15:00' },
+    saturday: null,
+    sunday: null,
+  });
+
+  const getDayOfWeek = (date: Date): string => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[date.getDay()];
+  };
+
+  const getRussianDayName = (dayKey: string): string => {
+    const names: { [key: string]: string } = {
+      monday: 'Понедельник',
+      tuesday: 'Вторник',
+      wednesday: 'Среда',
+      thursday: 'Четверг',
+      friday: 'Пятница',
+      saturday: 'Суббота',
+      sunday: 'Воскресенье',
+    };
+    return names[dayKey] || dayKey;
+  };
+
+  const getStudyScheduleForDate = (date: Date) => {
+    const dayName = getDayOfWeek(date);
+    return weekSchedule[dayName];
+  };
+
+  const checkTimeConflict = (
+    time1Start: string,
+    time1End: string,
+    time2Start: string,
+    time2End: string
+  ): boolean => {
+    return time1Start < time2End && time1End > time2Start;
+  };
+
+  const getBookingsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return bookings.filter(b => b.date === dateStr);
+  };
+
+  const getConflictsForDate = (date: Date) => {
+    const studySchedule = getStudyScheduleForDate(date);
+    if (!studySchedule) return [];
+
+    const dayBookings = getBookingsForDate(date);
+    return dayBookings.filter(booking => 
+      booking.status === 'confirmed' &&
+      checkTimeConflict(
+        booking.start_time || booking.time.split('-')[0],
+        booking.end_time || booking.time.split('-')[1],
+        studySchedule.start,
+        studySchedule.end
+      )
+    );
+  };
+
+  const selectedDateBookings = getBookingsForDate(date);
+  const selectedDateConflicts = getConflictsForDate(date);
+  const studyForSelectedDate = getStudyScheduleForDate(date);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -57,18 +109,18 @@ const ScheduleTab = () => {
               <span>Календарь</span>
               <Dialog open={showStudyDialog} onOpenChange={setShowStudyDialog}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" title="Настроить расписание учёбы">
                     <Icon name="GraduationCap" size={16} />
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle>Шаблон недели (Учеба)</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     {Object.entries(weekSchedule).map(([day, schedule]) => (
-                      <div key={day} className="flex items-center gap-4">
-                        <Label className="w-24 capitalize">{day}</Label>
+                      <div key={day} className="flex items-center gap-2">
+                        <Label className="w-28 text-sm">{getRussianDayName(day)}</Label>
                         <Input
                           type="time"
                           value={schedule?.start || ''}
@@ -81,6 +133,7 @@ const ScheduleTab = () => {
                             })
                           }
                           className="flex-1"
+                          placeholder="С"
                         />
                         <Input
                           type="time"
@@ -94,6 +147,7 @@ const ScheduleTab = () => {
                             })
                           }
                           className="flex-1"
+                          placeholder="До"
                         />
                         <Button
                           variant="ghost"
@@ -118,32 +172,33 @@ const ScheduleTab = () => {
             <Calendar
               mode="single"
               selected={date}
-              onSelect={setDate}
+              onSelect={(newDate) => newDate && setDate(newDate)}
               className="rounded-md"
               modifiers={{
-                blocked: blockedDates,
                 hasStudy: (day) => {
                   const dayName = getDayOfWeek(day);
                   return weekSchedule[dayName] !== null;
                 },
-                hasEvent: (day) =>
-                  calendarEvents.some(
-                    (e) => e.date.toDateString() === day.toDateString()
-                  ),
+                hasBookings: (day) => {
+                  const dateStr = day.toISOString().split('T')[0];
+                  return bookings.some(b => b.date === dateStr);
+                },
+                hasConflict: (day) => getConflictsForDate(day).length > 0,
               }}
               modifiersStyles={{
-                blocked: {
-                  backgroundColor: '#fee2e2',
-                  color: '#991b1b',
-                  fontWeight: 'bold',
-                },
                 hasStudy: {
                   backgroundColor: '#dbeafe',
                   color: '#1e40af',
                 },
-                hasEvent: {
+                hasBookings: {
                   backgroundColor: '#e9d5ff',
                   color: '#6b21a8',
+                  fontWeight: 'bold',
+                },
+                hasConflict: {
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  fontWeight: 'bold',
                 },
               }}
             />
@@ -154,215 +209,119 @@ const ScheduleTab = () => {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
-                <span>Мероприятия</span>
+                <span>Есть записи</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-                <span>Занят</span>
+                <span>Конфликт с учёбой</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle>
-              {date?.toLocaleDateString('ru-RU', {
+              {date.toLocaleDateString('ru-RU', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
+                weekday: 'long',
               })}
             </CardTitle>
-            <div className="flex gap-2">
-              <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="gap-2">
-                    <Icon name="Plus" size={16} />
-                    Мероприятие
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Добавить мероприятие</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Название</Label>
-                      <Input
-                        value={newEvent.title}
-                        onChange={(e) =>
-                          setNewEvent({ ...newEvent, title: e.target.value })
-                        }
-                        placeholder="День рождения друга"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Начало</Label>
-                        <Input
-                          type="time"
-                          value={newEvent.startTime}
-                          onChange={(e) =>
-                            setNewEvent({ ...newEvent, startTime: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Конец</Label>
-                        <Input
-                          type="time"
-                          value={newEvent.endTime}
-                          onChange={(e) =>
-                            setNewEvent({ ...newEvent, endTime: e.target.value })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Описание (опционально)</Label>
-                      <Textarea
-                        value={newEvent.description}
-                        onChange={(e) =>
-                          setNewEvent({ ...newEvent, description: e.target.value })
-                        }
-                        placeholder="Дополнительная информация..."
-                      />
-                    </div>
-                    {conflictWarning.show && (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <Icon name="AlertTriangle" size={20} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="font-medium text-yellow-900 mb-2">
-                              Обнаружены конфликты:
-                            </p>
-                            <div className="text-sm text-yellow-800 whitespace-pre-line mb-3">
-                              {conflictWarning.message}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {studyForSelectedDate && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <Icon name="GraduationCap" size={16} className="text-blue-600" />
+                <AlertDescription className="ml-2">
+                  <strong>Учёба:</strong> {studyForSelectedDate.start} - {studyForSelectedDate.end}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {selectedDateConflicts.length > 0 && (
+              <Alert className="border-red-200 bg-red-50">
+                <Icon name="AlertTriangle" size={16} className="text-red-600" />
+                <AlertDescription className="ml-2">
+                  <strong>Внимание!</strong> {selectedDateConflicts.length} записей пересекаются с учёбой
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">
+                Записи на этот день ({selectedDateBookings.length})
+              </h3>
+              
+              {selectedDateBookings.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">Нет записей на этот день</p>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDateBookings
+                    .sort((a, b) => {
+                      const timeA = a.start_time || a.time.split('-')[0];
+                      const timeB = b.start_time || b.time.split('-')[0];
+                      return timeA.localeCompare(timeB);
+                    })
+                    .map((booking) => {
+                      const startTime = booking.start_time || booking.time.split('-')[0];
+                      const endTime = booking.end_time || booking.time.split('-')[1];
+                      const hasConflict = selectedDateConflicts.some(c => c.id === booking.id);
+                      
+                      return (
+                        <div
+                          key={booking.id}
+                          className={`p-4 rounded-lg border-2 ${
+                            hasConflict 
+                              ? 'bg-red-50 border-red-300' 
+                              : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-16 h-16 rounded-lg flex flex-col items-center justify-center ${
+                                hasConflict ? 'bg-red-100' : 'bg-primary/10'
+                              }`}>
+                                <span className={`text-lg font-bold ${
+                                  hasConflict ? 'text-red-600' : 'text-primary'
+                                }`}>
+                                  {startTime.substring(0, 5)}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {endTime.substring(0, 5)}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{booking.client}</p>
+                                <p className="text-sm text-gray-600">
+                                  {booking.service} • {booking.duration} мин
+                                </p>
+                                {hasConflict && (
+                                  <div className="flex items-center gap-1 mt-1 text-red-600 text-sm">
+                                    <Icon name="AlertTriangle" size={14} />
+                                    <span>Пересечение с учёбой</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={addEventConfirmed}
-                                variant="default"
-                                size="sm"
-                              >
-                                Продолжить
-                              </Button>
-                              <Button
-                                onClick={() =>
-                                  setConflictWarning({
-                                    show: false,
-                                    message: '',
-                                    conflicts: [],
-                                  })
-                                }
-                                variant="outline"
-                                size="sm"
-                              >
-                                Отмена
-                              </Button>
-                            </div>
+                            <Badge className={
+                              booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              booking.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-700'
+                            }>
+                              {booking.status === 'confirmed' ? 'Подтверждено' :
+                               booking.status === 'pending' ? 'Ожидает' :
+                               booking.status === 'completed' ? 'Завершено' :
+                               'Отменено'}
+                            </Badge>
                           </div>
                         </div>
-                      </div>
-                    )}
-                    {!conflictWarning.show && (
-                      <Button onClick={addEvent} className="w-full">
-                        Добавить
-                      </Button>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Button
-                size="sm"
-                variant={isDayBlocked(date) ? 'destructive' : 'outline'}
-                onClick={toggleBlockedDate}
-                className="gap-2"
-              >
-                <Icon name="Ban" size={16} />
-                {isDayBlocked(date) ? 'Разблокировать' : 'Занят'}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isDayBlocked(date) && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-                <Icon name="AlertCircle" size={20} className="text-red-600" />
-                <div>
-                  <p className="font-medium text-red-900">День заблокирован</p>
-                  <p className="text-sm text-red-700">
-                    Клиенты не смогут записаться на этот день
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {date && weekSchedule[getDayOfWeek(date)] && (
-              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Icon name="GraduationCap" size={20} className="text-blue-600" />
-                    <div>
-                      <p className="font-medium text-blue-900">Учеба по расписанию</p>
-                      <p className="text-sm text-blue-700">
-                        {weekSchedule[getDayOfWeek(date)]?.start} -{' '}
-                        {weekSchedule[getDayOfWeek(date)]?.end}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                    Регулярно
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {eventsForSelectedDate.length === 0 && !weekSchedule[getDayOfWeek(date || new Date())] && !isDayBlocked(date) && (
-                <div className="text-center py-12 text-gray-400">
-                  <Icon name="CalendarOff" size={48} className="mx-auto mb-3" />
-                  <p>Нет событий на выбранную дату</p>
+                      );
+                    })}
                 </div>
               )}
-
-              {eventsForSelectedDate.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors"
-                >
-                  <div className="w-20 text-center">
-                    <p className="text-lg font-bold text-primary">{event.startTime}</p>
-                    <p className="text-xs text-gray-500">{event.endTime}</p>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-gray-900">{event.title}</p>
-                      <Badge className={getEventTypeColor(event.type)}>
-                        {getEventTypeText(event.type)}
-                      </Badge>
-                    </div>
-                    {event.description && (
-                      <p className="text-sm text-gray-500">{event.description}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Icon name="Pencil" size={16} />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setCalendarEvents(
-                          calendarEvents.filter((e) => e.id !== event.id)
-                        )
-                      }
-                    >
-                      <Icon name="Trash2" size={16} />
-                    </Button>
-                  </div>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
