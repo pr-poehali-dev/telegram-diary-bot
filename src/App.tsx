@@ -4,7 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import PublicBooking from "./pages/PublicBooking";
+import AdminPanel from "./pages/AdminPanel";
 import Booking from "./pages/Booking";
 import NotFound from "./pages/NotFound";
 
@@ -17,7 +18,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<PublicBooking />} />
+          <Route path="/WorldSettings" element={<AdminPanel />} />
           <Route path="/booking/:ownerId" element={<Booking />} />
           <Route path="//booking/:ownerId" element={<Booking />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
