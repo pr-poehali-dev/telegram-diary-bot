@@ -349,9 +349,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             chat_id = message['chat']['id']
             text = message.get('text', '')
             
+            # Логирование для отладки
+            owner_id = os.environ.get('TELEGRAM_OWNER_ID', '0')
+            group_id = os.environ.get('TELEGRAM_GROUP_ID', '')
+            debug_msg = f'🔍 DEBUG:\nChat ID: {chat_id}\nOwner ID: {owner_id}\nGroup ID: {group_id}\nAccess: {is_access_allowed(chat_id)}'
+            print(debug_msg)
+            
             # Проверяем доступ (владелец или группа)
             if not is_access_allowed(chat_id):
-                send_telegram_message(chat_id, '❌ У вас нет доступа к этому боту')
+                send_telegram_message(chat_id, f'❌ У вас нет доступа к этому боту\n\n{debug_msg}')
                 return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
             
             db_url = os.environ.get('DATABASE_URL')
