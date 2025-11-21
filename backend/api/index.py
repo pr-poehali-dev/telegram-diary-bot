@@ -776,10 +776,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             if current_start < work_end_min and work_end_min - current_start >= total_time_needed:
                                 available_periods.append((current_start, work_end_min))
                     
+                    # DEBUG: Log available periods
+                    import sys
+                    print(f"DEBUG available_slots: date={date}, service_id={service_id}", file=sys.stderr)
+                    print(f"  work_start={work_start}, work_end={work_end}", file=sys.stderr)
+                    print(f"  duration={duration}, prep={prep_time}, buffer={buffer_time}, total={total_time_needed}", file=sys.stderr)
+                    print(f"  study_periods={len(study_periods)}, events={len(events)}, bookings={len(bookings)}", file=sys.stderr)
+                    print(f"  available_periods={available_periods}", file=sys.stderr)
+                    
                     # Генерируем слоты для каждого доступного периода
                     for period_start, period_end in available_periods:
                         # Start from position where we have space for prep_time before the first slot
                         current = period_start + prep_time
+                        
+                        print(f"  Generating slots for period ({period_start}, {period_end}), starting at {current}", file=sys.stderr)
                         
                         while current + duration + buffer_time <= period_end:
                             slot_start = f"{current // 60:02d}:{current % 60:02d}"
