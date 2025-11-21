@@ -821,7 +821,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                 temp_periods = new_temp_periods
                             
                             # Шаг 2: Вычитаем события из оставшихся периодов
-                            sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time']))
+                            sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time'])) if events else []
+                            
+                            # Логирование для дебага
+                            print(f'DEBUG: temp_periods after study removal: {temp_periods}')
+                            print(f'DEBUG: events count: {len(events)}')
                             
                             for period_start, period_end in temp_periods:
                                 current_start = period_start
@@ -837,6 +841,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                 
                                 if current_start < period_end and period_end - current_start >= total_time_needed:
                                     available_periods.append((current_start, period_end))
+                            
+                            print(f'DEBUG: available_periods: {available_periods}')
                         else:
                             # Нет учёбы - работаем как раньше с work_start-work_end
                             current_start = work_start_min
