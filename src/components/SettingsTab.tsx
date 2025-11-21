@@ -7,12 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useData } from '@/contexts/DataContext';
 import { api } from '@/services/api';
 import { cacheUtils } from '@/utils/cache';
 
 const SettingsTab = () => {
   const { isAdmin, user } = useAuth();
   const { toast } = useToast();
+  const { settings: contextSettings, refreshSettings } = useData();
   const [loading, setLoading] = useState(false);
   
   const [systemSettings, setSystemSettings] = useState({
@@ -31,26 +33,15 @@ const SettingsTab = () => {
   });
 
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const data = await api.settings.get();
-        const settings = data.settings || {};
-        
-        setSystemSettings({
-          prep_time: Number(settings.prep_time) || 0,
-          buffer_time: Number(settings.buffer_time) || 0,
-          work_start: settings.work_start || '10:00',
-          work_end: settings.work_end || '20:00',
-          work_priority: settings.work_priority === 'True' || settings.work_priority === 'true',
-          reminder_days_before: Number(settings.reminder_days_before) || 1,
-        });
-      } catch (error) {
-        console.error('Failed to load settings:', error);
-      }
-    };
-
-    loadSettings();
-  }, []);
+    setSystemSettings({
+      prep_time: Number(contextSettings.prep_time) || 0,
+      buffer_time: Number(contextSettings.buffer_time) || 0,
+      work_start: contextSettings.work_start || '10:00',
+      work_end: contextSettings.work_end || '20:00',
+      work_priority: contextSettings.work_priority === 'True' || contextSettings.work_priority === 'true',
+      reminder_days_before: Number(contextSettings.reminder_days_before) || 1,
+    });
+  }, [contextSettings]);
 
   const handleSaveSystemSettings = async () => {
     setLoading(true);
@@ -61,6 +52,7 @@ const SettingsTab = () => {
       };
       await api.settings.update(settingsToSave);
       cacheUtils.invalidateSettings();
+      await refreshSettings();
       toast({ title: 'Успешно', description: 'Системные настройки сохранены' });
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось сохранить', variant: 'destructive' });

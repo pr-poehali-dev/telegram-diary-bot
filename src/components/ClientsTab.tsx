@@ -8,10 +8,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import Icon from '@/components/ui/icon';
-import { useClients } from '@/hooks/useApi';
+import { useData } from '@/contexts/DataContext';
 
 const ClientsTab = () => {
-  const { clients, loading } = useClients();
+  const { clients, loading } = useData();
 
   return (
     <div className="space-y-6 animate-fade-in">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '@/services/api';
+import { useData } from '@/contexts/DataContext';
 import WeekScheduleCard from './schedule/WeekScheduleCard';
 import EventsCard from './schedule/EventsCard';
 import BlockedDatesCard from './schedule/BlockedDatesCard';
@@ -28,32 +28,25 @@ interface BlockedDate {
 }
 
 export default function MyScheduleTab() {
-  const [weekSchedule, setWeekSchedule] = useState<WeekScheduleItem[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
+  const { 
+    weekSchedule, 
+    events, 
+    blockedDates, 
+    refreshWeekSchedule, 
+    refreshEvents, 
+    refreshBlockedDates 
+  } = useData();
   
   const [showConflict, setShowConflict] = useState(false);
   const [conflictData, setConflictData] = useState<any>(null);
   const [forceCallback, setForceCallback] = useState<(() => void) | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
-    try {
-      const [scheduleRes, eventsRes, blockedRes] = await Promise.all([
-        api.schedule.getWeek(),
-        api.events.getAll(),
-        api.blockedDates.getAll(),
-      ]);
-      
-      setWeekSchedule(scheduleRes.schedule || []);
-      setEvents(eventsRes.events || []);
-      setBlockedDates(blockedRes.blockedDates || []);
-    } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
-    }
+    await Promise.all([
+      refreshWeekSchedule(),
+      refreshEvents(),
+      refreshBlockedDates(),
+    ]);
   };
 
   const handleConflict = (data: any, callback: () => void) => {

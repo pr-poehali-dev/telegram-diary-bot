@@ -27,16 +27,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
-import { useBookings, useClients, useServices } from '@/hooks/useApi';
+import { useData } from '@/contexts/DataContext';
 import { useAppContext } from '@/contexts/AppContext';
 import { api } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const BookingsTab = () => {
   const { getStatusColor, getStatusText } = useAppContext();
-  const { bookings, loading, reload } = useBookings();
-  const { clients } = useClients();
-  const { services } = useServices();
+  const { bookings, clients, services, loading, refreshBookings } = useData();
   const { toast } = useToast();
   
   const [showDialog, setShowDialog] = useState(false);
@@ -67,7 +65,7 @@ const BookingsTab = () => {
       });
       
       setShowDialog(false);
-      reload();
+      refreshBookings();
       setNewBooking({
         client_id: '',
         service_id: '',
@@ -91,7 +89,7 @@ const BookingsTab = () => {
         title: 'Статус обновлен',
         description: 'Статус записи успешно изменен',
       });
-      reload();
+      refreshBookings();
     } catch (error) {
       toast({
         title: 'Ошибка',

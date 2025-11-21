@@ -2,14 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { useAppContext } from '@/contexts/AppContext';
-import { useBookings, useServices, useClients } from '@/hooks/useApi';
+import { useData } from '@/contexts/DataContext';
 import { useEffect, useState } from 'react';
 
 const DashboardTab = () => {
   const { getStatusColor, getStatusText } = useAppContext();
-  const { bookings, loading: loadingBookings } = useBookings();
-  const { services } = useServices();
-  const { clients, loading: loadingClients } = useClients();
+  const { bookings, services, clients, loading } = useData();
   
   const [stats, setStats] = useState({
     todayBookings: 0,
@@ -101,7 +99,7 @@ const DashboardTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingBookings ? (
+            {loading ? (
               <p className="text-center text-gray-500">Загрузка...</p>
             ) : todayBookingsList.length === 0 ? (
               <p className="text-center text-gray-500">Нет записей на сегодня</p>
@@ -141,7 +139,7 @@ const DashboardTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {loadingClients ? (
+            {loading ? (
               <p className="text-center text-gray-500">Загрузка...</p>
             ) : topClients.length === 0 ? (
               <p className="text-center text-gray-500">Нет клиентов</p>

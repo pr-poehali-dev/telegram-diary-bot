@@ -9,10 +9,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import Icon from '@/components/ui/icon';
-import { useServices } from '@/hooks/useApi';
+import { useData } from '@/contexts/DataContext';
 
 const ServicesTab = () => {
-  const { services, loading } = useServices();
+  const { services, loading } = useData();
 
   const activeServices = services.filter(s => s.active);
   const totalRevenue = services.reduce((sum, s) => sum + Number(s.price), 0);
