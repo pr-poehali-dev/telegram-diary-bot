@@ -305,8 +305,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     import traceback
                     error_msg = str(e) if str(e) else repr(e)
                     error_trace = traceback.format_exc()
-                    print(f'ERROR creating event: {error_msg}')
-                    print(f'Traceback: {error_trace}')
                     return {
                         'statusCode': 500,
                         'headers': {
