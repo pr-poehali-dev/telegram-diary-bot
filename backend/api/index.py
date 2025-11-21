@@ -1172,6 +1172,48 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         })
                     }
         
+        # BOOKING DATA (public booking page - services + settings)
+        elif resource == 'booking_data':
+            if method == 'GET':
+                owner_id = event.get('queryStringParameters', {}).get('owner_id', '1')
+                
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    # 1. Active Services
+                    cur.execute('''
+                        SELECT * FROM services 
+                        WHERE owner_id = %s AND active = true
+                        ORDER BY name
+                    ''', (owner_id,))
+                    services_raw = cur.fetchall()
+                    
+                    services = []
+                    for service in services_raw:
+                        services.append({
+                            'id': service['id'],
+                            'name': service['name'],
+                            'duration': f"{service['duration_minutes']} мин",
+                            'price': f"{service['price']}₽",
+                            'active': service['active']
+                        })
+                    
+                    # 2. Settings (только нужные для booking page)
+                    cur.execute('SELECT key, value FROM settings WHERE owner_id = %s', (int(owner_id),))
+                    settings_rows = cur.fetchall()
+                    settings = {row['key']: row['value'] for row in settings_rows}
+                    
+                    return {
+                        'statusCode': 200,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'isBase64Encoded': False,
+                        'body': json.dumps({
+                            'services': services,
+                            'settings': settings
+                        })
+                    }
+        
         return {
             'statusCode': 400,
             'headers': {'Access-Control-Allow-Origin': '*'},

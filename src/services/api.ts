@@ -123,6 +123,13 @@ export const api = {
     }>('admin_data', 'GET'),
   },
 
+  booking: {
+    getPageData: () => apiRequest<{
+      services: any[];
+      settings: any;
+    }>('booking_data', 'GET'),
+  },
+
   auth: {
     login: async (telegramId: number) => {
       const response = await fetch(

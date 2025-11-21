@@ -49,13 +49,12 @@ const Booking = () => {
   });
 
   useEffect(() => {
-    loadServices();
-    loadSettings();
+    loadBookingData();
   }, []);
 
-  const loadServices = async () => {
-    const cacheKey = `services_${ownerId}`;
-    const cacheTimeKey = `services_${ownerId}_time`;
+  const loadBookingData = async () => {
+    const cacheKey = `booking_data_${ownerId}`;
+    const cacheTimeKey = `booking_data_${ownerId}_time`;
     const CACHE_DURATION = 60 * 60 * 1000;
     
     try {
@@ -65,66 +64,45 @@ const Booking = () => {
       if (cachedData && cachedTime) {
         const age = Date.now() - parseInt(cachedTime);
         if (age < CACHE_DURATION) {
-          setServices(JSON.parse(cachedData));
+          const cached = JSON.parse(cachedData);
+          setServices(cached.services);
+          setSettings(cached.settings);
+          console.log('📦 [Booking] Загружено из кеша');
           return;
         }
       }
       
-      const data = await api.services.getAll();
-      const activeServices = data.services.filter((s: Service) => s.active);
-      setServices(activeServices);
+      console.log('🔄 [Booking] API ВЫЗОВ: booking.getPageData()');
+      const data = await api.booking.getPageData();
       
-      localStorage.setItem(cacheKey, JSON.stringify(activeServices));
-      localStorage.setItem(cacheTimeKey, String(Date.now()));
-    } catch (error) {
-      const cachedData = localStorage.getItem(cacheKey);
-      if (cachedData) {
-        setServices(JSON.parse(cachedData));
-      } else {
-        toast({
-          title: 'Ошибка',
-          description: 'Не удалось загрузить услуги',
-          variant: 'destructive',
-        });
-      }
-    }
-  };
-
-  const loadSettings = async () => {
-    const cacheKey = `settings_${ownerId}`;
-    const cacheTimeKey = `settings_${ownerId}_time`;
-    const CACHE_DURATION = 60 * 60 * 1000;
-    
-    try {
-      const cachedData = localStorage.getItem(cacheKey);
-      const cachedTime = localStorage.getItem(cacheTimeKey);
+      setServices(data.services || []);
       
-      if (cachedData && cachedTime) {
-        const age = Date.now() - parseInt(cachedTime);
-        if (age < CACHE_DURATION) {
-          setSettings(JSON.parse(cachedData));
-          return;
-        }
-      }
-      
-      const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
-      const response = await fetch(`${API_URL}?resource=settings&owner_id=${ownerId}`);
-      const data = await response.json();
-      const settingsData = data.settings || {};
       const settingsObj = {
-        prep_time: Number(settingsData.prep_time) || 0,
-        buffer_time: Number(settingsData.buffer_time) || 0,
+        prep_time: Number(data.settings?.prep_time) || 0,
+        buffer_time: Number(data.settings?.buffer_time) || 0,
       };
       setSettings(settingsObj);
       
-      localStorage.setItem(cacheKey, JSON.stringify(settingsObj));
+      localStorage.setItem(cacheKey, JSON.stringify({
+        services: data.services,
+        settings: settingsObj
+      }));
       localStorage.setItem(cacheTimeKey, String(Date.now()));
+      
+      console.log('✅ [Booking] Данные загружены:', data.services?.length || 0, 'услуг');
     } catch (error) {
       const cachedData = localStorage.getItem(cacheKey);
       if (cachedData) {
-        setSettings(JSON.parse(cachedData));
+        const cached = JSON.parse(cachedData);
+        setServices(cached.services);
+        setSettings(cached.settings);
+        console.log('⚠️ [Booking] Ошибка API, используем кеш');
       } else {
-        console.error('Failed to load settings:', error);
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось загрузить данные',
+          variant: 'destructive',
+        });
       }
     }
   };
