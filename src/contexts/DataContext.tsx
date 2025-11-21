@@ -112,20 +112,28 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const refreshAll = async () => {
-    console.log('🚀 [DataContext] НАЧАЛО: Загрузка всех данных (7 вызовов API)');
+    console.log('🚀 [DataContext] НАЧАЛО: Загрузка всех данных (1 оптимизированный вызов API)');
     setLoading(true);
     setError(null);
     try {
-      await Promise.all([
-        refreshBookings(),
-        refreshServices(),
-        refreshClients(),
-        refreshSettings(),
-        refreshEvents(),
-        refreshWeekSchedule(),
-        refreshBlockedDates(),
-      ]);
-      console.log('🎉 [DataContext] ЗАВЕРШЕНО: Все данные загружены');
+      const data = await api.admin.getAllData();
+      
+      setBookings(data.bookings || []);
+      setServices(data.services || []);
+      setClients(data.clients || []);
+      setSettings(data.settings || {});
+      setEvents(data.events || []);
+      setWeekSchedule(data.weekSchedule || []);
+      setBlockedDates(data.blockedDates || []);
+      
+      console.log('🎉 [DataContext] ЗАВЕРШЕНО: Все данные загружены одним запросом');
+      console.log('  📊 Записи:', data.bookings?.length || 0);
+      console.log('  📊 Услуги:', data.services?.length || 0);
+      console.log('  📊 Клиенты:', data.clients?.length || 0);
+      console.log('  📊 Настройки:', Object.keys(data.settings || {}).length, 'ключей');
+      console.log('  📊 События:', data.events?.length || 0);
+      console.log('  📊 Расписание:', data.weekSchedule?.length || 0);
+      console.log('  📊 Блокировки:', data.blockedDates?.length || 0);
     } catch (err) {
       setError('Ошибка загрузки данных');
       console.error('❌ [DataContext] Error loading data:', err);

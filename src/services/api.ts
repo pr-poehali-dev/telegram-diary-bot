@@ -111,6 +111,18 @@ export const api = {
       apiRequest('settings', 'PUT', { ...data, owner_id: OWNER_ID }),
   },
 
+  admin: {
+    getAllData: () => apiRequest<{
+      bookings: any[];
+      services: any[];
+      clients: any[];
+      settings: any;
+      events: any[];
+      weekSchedule: any[];
+      blockedDates: any[];
+    }>('admin_data', 'GET'),
+  },
+
   auth: {
     login: async (telegramId: number) => {
       const response = await fetch(
