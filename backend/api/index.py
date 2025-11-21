@@ -714,8 +714,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         work_start_min = time_to_minutes(work_start)
                         work_end_min = time_to_minutes(work_end)
                         
-                        print(f'DEBUG: work_priority=False, work={work_start_min}-{work_end_min}, study_periods={len(study_periods)}')
-                        
                         if study_periods:
                             # Создаём свободные периоды, вычитая учёбу из рабочего времени
                             # Затем вычитаем события из оставшихся периодов
@@ -726,8 +724,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             for study in study_periods:
                                 study_start = time_to_minutes(study['start_time'])
                                 study_end = time_to_minutes(study['end_time'])
-                                
-                                print(f'DEBUG: Processing study {study_start}-{study_end}, temp_periods={temp_periods}')
                                 
                                 new_temp_periods = []
                                 for period_start, period_end in temp_periods:
@@ -747,8 +743,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                     # Учёба полностью покрывает период - ничего не добавляем
                                 
                                 temp_periods = new_temp_periods
-                            
-                            print(f'DEBUG: After study subtraction, temp_periods={temp_periods}')
                             
                             # Шаг 2: Вычитаем события из оставшихся периодов
                             sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time']))
