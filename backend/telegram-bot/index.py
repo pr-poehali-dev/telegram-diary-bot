@@ -384,16 +384,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Обработка уведомления о новой записи (от frontend)
         if 'booking_id' in body and 'client_name' in body:
             owner_telegram_id = int(os.environ.get('TELEGRAM_OWNER_ID', '0'))
+            group_id = os.environ.get('TELEGRAM_GROUP_ID', '')
             
-            if owner_telegram_id == 0:
+            # Приоритет: сначала группа, если настроена, иначе личка владельца
+            target_chat_id = int(group_id) if group_id else owner_telegram_id
+            
+            if target_chat_id == 0:
                 return {
                     'statusCode': 400,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                    'body': json.dumps({'error': 'TELEGRAM_OWNER_ID not configured'}),
+                    'body': json.dumps({'error': 'TELEGRAM_OWNER_ID or TELEGRAM_GROUP_ID not configured'}),
                     'isBase64Encoded': False
                 }
             
-            success = send_booking_notification(owner_telegram_id, body)
+            success = send_booking_notification(target_chat_id, body)
             
             return {
                 'statusCode': 200 if success else 500,
