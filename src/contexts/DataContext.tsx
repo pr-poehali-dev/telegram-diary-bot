@@ -35,69 +35,84 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   const refreshBookings = async () => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: bookings.getAllData()');
     try {
       const response = await api.bookings.getAllData();
       setBookings(response.bookings || []);
+      console.log('✅ [DataContext] Записи загружены:', response.bookings?.length || 0);
     } catch (err) {
-      console.error('Error loading bookings:', err);
+      console.error('❌ [DataContext] Error loading bookings:', err);
     }
   };
 
   const refreshServices = async () => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: services.getAll()');
     try {
       const response = await api.services.getAll();
       setServices(response.services || []);
+      console.log('✅ [DataContext] Услуги загружены:', response.services?.length || 0);
     } catch (err) {
-      console.error('Error loading services:', err);
+      console.error('❌ [DataContext] Error loading services:', err);
     }
   };
 
   const refreshClients = async () => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: clients.getAll()');
     try {
       const response = await api.clients.getAll();
       setClients(response.clients || []);
+      console.log('✅ [DataContext] Клиенты загружены:', response.clients?.length || 0);
     } catch (err) {
-      console.error('Error loading clients:', err);
+      console.error('❌ [DataContext] Error loading clients:', err);
     }
   };
 
   const refreshSettings = async () => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: settings.get()');
     try {
       const response = await api.settings.get();
       setSettings(response.settings || {});
+      console.log('✅ [DataContext] Настройки загружены:', Object.keys(response.settings || {}).length, 'ключей');
     } catch (err) {
-      console.error('Error loading settings:', err);
+      console.error('❌ [DataContext] Error loading settings:', err);
     }
   };
 
   const refreshEvents = async () => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: events.getAll()');
     try {
       const response = await api.events.getAll();
       setEvents(response.events || []);
+      console.log('✅ [DataContext] События загружены:', response.events?.length || 0);
     } catch (err) {
-      console.error('Error loading events:', err);
+      console.error('❌ [DataContext] Error loading events:', err);
     }
   };
 
   const refreshWeekSchedule = async () => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: schedule.getWeek()');
     try {
       const response = await api.schedule.getWeek();
       setWeekSchedule(response.schedule || []);
+      console.log('✅ [DataContext] Недельное расписание загружено:', response.schedule?.length || 0);
     } catch (err) {
-      console.error('Error loading week schedule:', err);
+      console.error('❌ [DataContext] Error loading week schedule:', err);
     }
   };
 
   const refreshBlockedDates = async () => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: blockedDates.getAll()');
     try {
       const response = await api.blockedDates.getAll();
       setBlockedDates(response.blockedDates || []);
+      console.log('✅ [DataContext] Заблокированные даты загружены:', response.blockedDates?.length || 0);
     } catch (err) {
-      console.error('Error loading blocked dates:', err);
+      console.error('❌ [DataContext] Error loading blocked dates:', err);
     }
   };
 
   const refreshAll = async () => {
+    console.log('🚀 [DataContext] НАЧАЛО: Загрузка всех данных (7 вызовов API)');
     setLoading(true);
     setError(null);
     try {
@@ -110,15 +125,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         refreshWeekSchedule(),
         refreshBlockedDates(),
       ]);
+      console.log('🎉 [DataContext] ЗАВЕРШЕНО: Все данные загружены');
     } catch (err) {
       setError('Ошибка загрузки данных');
-      console.error('Error loading data:', err);
+      console.error('❌ [DataContext] Error loading data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log('🎬 [DataContext] DataProvider монтирован - запускаем refreshAll()');
     refreshAll();
   }, []);
 
