@@ -40,7 +40,7 @@ const SettingsTab = () => {
           buffer_time: Number(settings.buffer_time) || 0,
           work_start: settings.work_start || '10:00',
           work_end: settings.work_end || '20:00',
-          work_priority: settings.work_priority === 'true',
+          work_priority: settings.work_priority === 'True' || settings.work_priority === 'true',
           reminder_days_before: Number(settings.reminder_days_before) || 1,
         });
       } catch (error) {
@@ -48,15 +48,17 @@ const SettingsTab = () => {
       }
     };
 
-    if (isAdmin) {
-      loadSettings();
-    }
-  }, [isAdmin]);
+    loadSettings();
+  }, []);
 
   const handleSaveSystemSettings = async () => {
     setLoading(true);
     try {
-      await api.settings.update(systemSettings);
+      const settingsToSave = {
+        ...systemSettings,
+        work_priority: systemSettings.work_priority ? 'True' : 'False',
+      };
+      await api.settings.update(settingsToSave);
       toast({ title: 'Успешно', description: 'Системные настройки сохранены' });
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось сохранить', variant: 'destructive' });
@@ -70,12 +72,11 @@ const SettingsTab = () => {
       <div>
         <h2 className="text-3xl font-bold text-gray-900">Настройки</h2>
         <p className="text-gray-500 mt-1">
-          {isAdmin ? 'Системные настройки и профиль' : 'Профиль и настройки'}
+          Системные настройки и профиль
         </p>
       </div>
 
-      {isAdmin ? (
-        <Tabs defaultValue="system" className="space-y-6">
+      <Tabs defaultValue="system" className="space-y-6">
           <TabsList>
             <TabsTrigger value="system">Системные</TabsTrigger>
             <TabsTrigger value="profile">Профиль</TabsTrigger>
@@ -148,6 +149,22 @@ const SettingsTab = () => {
                         onChange={(e) => setSystemSettings({ ...systemSettings, work_end: e.target.value })}
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={systemSettings.work_priority}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, work_priority: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span>Приоритет рабочего времени</span>
+                    </Label>
+                    <p className="text-xs text-muted-foreground ml-6">
+                      {systemSettings.work_priority 
+                        ? '✓ Клиенты видят слоты только в рабочее время (учёба игнорируется)'
+                        : '✗ Клиенты видят слоты: рабочее время минус учёба'}
+                    </p>
                   </div>
                   <Button onClick={handleSaveSystemSettings} disabled={loading}>
                     {loading ? 'Сохранение...' : 'Сохранить'}
@@ -223,43 +240,6 @@ const SettingsTab = () => {
             </div>
           </TabsContent>
         </Tabs>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Icon name="User" size={20} />
-                Профиль
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Имя</Label>
-                <Input
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Телефон</Label>
-                <Input
-                  value={profile.phone}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                />
-              </div>
-              <Button>Сохранить</Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 };
