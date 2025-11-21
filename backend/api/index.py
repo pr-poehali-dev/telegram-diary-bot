@@ -563,6 +563,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             client_id = cur.fetchone()['id']
                     else:
                         # Создаём нового пользователя (без telegram_id для веб-клиентов)
+                        # Если email пустой, вставляем NULL чтобы избежать конфликта UNIQUE
+                        email_value = body_data.get('email', '').strip()
+                        email_value = email_value if email_value else None
+                        
+                        phone_value = body_data.get('phone', '').strip()
+                        phone_value = phone_value if phone_value else None
+                        
                         cur.execute('''
                             INSERT INTO users (role, name, phone, email)
                             VALUES (%s, %s, %s, %s)
@@ -570,8 +577,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         ''', (
                             'client',
                             body_data['name'],
-                            body_data.get('phone', ''),
-                            body_data.get('email', '')
+                            phone_value,
+                            email_value
                         ))
                         
                         user_id = cur.fetchone()['id']
