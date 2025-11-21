@@ -146,7 +146,7 @@ const ScheduleTab = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900">Расписание</h2>
+        <h2 className="text-3xl font-bold text-gray-900">Календарь дел</h2>
         <p className="text-gray-500 mt-1">Управляйте своим временем</p>
       </div>
 
