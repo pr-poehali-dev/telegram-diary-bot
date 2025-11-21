@@ -93,7 +93,10 @@ const ScheduleTab = () => {
   };
 
   const getBookingsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return bookings.filter(b => b.date === dateStr && b.status !== 'cancelled');
   };
 
@@ -118,12 +121,18 @@ const ScheduleTab = () => {
   };
 
   const getEventsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return (contextEvents || []).filter(e => e.date === dateStr);
   };
 
   const isDateBlocked = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const blockedDateStrings = (contextBlockedDates || []).map((b: any) => b.date);
     return blockedDateStrings.includes(dateStr);
   };
@@ -219,7 +228,10 @@ const ScheduleTab = () => {
                   return weekSchedule[dayName] !== null;
                 },
                 hasBookings: (day) => {
-                  const dateStr = day.toISOString().split('T')[0];
+                  const year = day.getFullYear();
+                  const month = String(day.getMonth() + 1).padStart(2, '0');
+                  const dayNum = String(day.getDate()).padStart(2, '0');
+                  const dateStr = `${year}-${month}-${dayNum}`;
                   return bookings.some(b => b.date === dateStr);
                 },
                 hasEvents: (day) => getEventsForDate(day).length > 0,
