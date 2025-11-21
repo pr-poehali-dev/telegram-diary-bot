@@ -658,6 +658,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             
                             if bookings:
                                 response_text = f'📅 <b>Ваши записи:</b>\n\n'
+                                
+                                # Создаём кнопки для каждой записи (только активные)
+                                buttons = []
+                                
                                 for booking in bookings:
                                     status_emoji = {'pending': '⏳', 'confirmed': '✅', 'completed': '✔️', 'cancelled': '❌'}
                                     emoji = status_emoji.get(booking['status'], '❓')
@@ -676,13 +680,66 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                     response_text += f'💇 {booking["service_name"]}\n'
                                     response_text += f'💰 {booking["price"]}₽\n'
                                     response_text += f'📊 {status_text}\n\n'
+                                    
+                                    # Добавляем кнопку отмены только для активных записей
+                                    if booking['status'] in ['pending', 'confirmed']:
+                                        buttons.append([{
+                                            'text': f'❌ Отменить #{booking["id"]}',
+                                            'callback_data': f'client_cancel_{booking["id"]}'
+                                        }])
                                 
-                                response_text += '💡 Для отмены: /cancel ID'
+                                # Отправляем с кнопками, если есть что отменять
+                                if buttons:
+                                    reply_markup = {'inline_keyboard': buttons}
+                                    send_telegram_message(chat_id, response_text, reply_markup)
+                                else:
+                                    send_telegram_message(chat_id, response_text)
                             else:
                                 response_text = '📭 У вас нет предстоящих записей.'
+                                send_telegram_message(chat_id, response_text)
                             
-                            send_telegram_message(chat_id, response_text)
                             return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    elif text == '/cancel':
+                        # Показываем список записей с кнопками отмены
+                        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                            cur.execute('''
+                                SELECT b.id, b.booking_date, b.start_time, b.status,
+                                       s.name as service_name
+                                FROM bookings b
+                                LEFT JOIN clients c ON b.client_id = c.id
+                                LEFT JOIN services s ON b.service_id = s.id
+                                WHERE c.user_id = %s 
+                                  AND b.booking_date >= CURRENT_DATE
+                                  AND b.status IN ('pending', 'confirmed')
+                                ORDER BY b.booking_date, b.start_time
+                            ''', (user_id,))
+                            
+                            bookings = cur.fetchall()
+                            
+                            if bookings:
+                                response_text = '❌ <b>Выберите запись для отмены:</b>\n\n'
+                                buttons = []
+                                
+                                for booking in bookings:
+                                    date_str = booking['booking_date'].strftime('%d.%m.%Y')
+                                    time_str = booking['start_time'].strftime('%H:%M')
+                                    
+                                    response_text += f'📅 {date_str} в {time_str}\n'
+                                    response_text += f'💇 {booking["service_name"]}\n\n'
+                                    
+                                    buttons.append([{
+                                        'text': f'❌ Отменить #{booking["id"]} ({date_str} {time_str})',
+                                        'callback_data': f'client_cancel_{booking["id"]}'
+                                    }])
+                                
+                                reply_markup = {'inline_keyboard': buttons}
+                                send_telegram_message(chat_id, response_text, reply_markup)
+                            else:
+                                response_text = '✅ У вас нет активных записей для отмены.'
+                                send_telegram_message(chat_id, response_text)
+                        
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                     
                     elif text.startswith('/cancel '):
                         try:
@@ -716,7 +773,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             send_telegram_message(chat_id, response_text)
                             return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                         except ValueError:
-                            response_text = '❌ Неверный формат. Используйте: /cancel ID'
+                            response_text = '❌ Неверный формат. Используйте: /cancel'
                             send_telegram_message(chat_id, response_text)
                             return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                     
@@ -792,16 +849,51 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             message_id = callback['message']['message_id']
             callback_data = callback['data']
             
-            if not is_access_allowed(chat_id):
-                return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
-            
             db_url = os.environ.get('DATABASE_URL')
             conn = psycopg2.connect(db_url)
             
             try:
-                response_text = handle_callback(conn, callback_data, chat_id, message_id, 1)
-                keyboard = get_main_keyboard()
-                send_telegram_message(chat_id, response_text, keyboard)
+                # Обработка callback от клиента
+                if callback_data.startswith('client_cancel_'):
+                    booking_id = int(callback_data.split('_')[2])
+                    
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        # Проверяем принадлежность записи
+                        cur.execute('''
+                            SELECT b.id, b.status, c.user_id
+                            FROM bookings b
+                            LEFT JOIN clients c ON b.client_id = c.id
+                            WHERE b.id = %s
+                        ''', (booking_id,))
+                        
+                        booking = cur.fetchone()
+                        
+                        # Проверяем telegram_id клиента
+                        cur.execute('SELECT id FROM users WHERE telegram_id = %s', (chat_id,))
+                        user = cur.fetchone()
+                        
+                        if not booking or not user or booking['user_id'] != user['id']:
+                            response_text = '❌ Запись не найдена или не принадлежит вам.'
+                        elif booking['status'] == 'cancelled':
+                            response_text = '❌ Запись уже отменена.'
+                        elif booking['status'] == 'completed':
+                            response_text = '❌ Нельзя отменить завершённую запись.'
+                        else:
+                            cur.execute(
+                                'UPDATE bookings SET status = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+                                ('cancelled', booking_id)
+                            )
+                            conn.commit()
+                            response_text = f'✅ Запись #{booking_id} отменена.'
+                    
+                    send_telegram_message(chat_id, response_text)
+                
+                # Обработка callback от владельца
+                elif is_access_allowed(chat_id):
+                    response_text = handle_callback(conn, callback_data, chat_id, message_id, 1)
+                    keyboard = get_main_keyboard()
+                    send_telegram_message(chat_id, response_text, keyboard)
+                
             finally:
                 conn.close()
         
