@@ -9,6 +9,7 @@ import os
 from typing import Dict, Any
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import urllib.request
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     method: str = event.get('httpMethod', 'GET')
@@ -92,7 +93,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             elif method == 'POST':
                 body_data = json.loads(event.get('body', '{}'))
                 
-                with conn.cursor() as cur:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     query = '''
                         INSERT INTO bookings 
                         (client_id, service_id, owner_id, booking_date, start_time, end_time, status)
@@ -111,6 +112,53 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     
                     booking_id = cur.fetchone()[0]
                     conn.commit()
+                    
+                    # Получаем полные данные записи для уведомления
+                    cur.execute('''
+                        SELECT 
+                            b.id as booking_id,
+                            b.booking_date,
+                            b.start_time,
+                            u.name as client_name,
+                            u.phone as client_phone,
+                            u.email as client_email,
+                            s.name as service_name,
+                            s.duration_minutes,
+                            s.price
+                        FROM bookings b
+                        LEFT JOIN clients c ON b.client_id = c.id
+                        LEFT JOIN users u ON c.user_id = u.id
+                        LEFT JOIN services s ON b.service_id = s.id
+                        WHERE b.id = %s
+                    ''', (booking_id,))
+                    
+                    booking_data = cur.fetchone()
+                    
+                    # Отправляем уведомление в Telegram
+                    if booking_data:
+                        try:
+                            telegram_bot_url = 'https://functions.poehali.dev/07b2b89b-011e-472f-b782-0f844489a891'
+                            notification_payload = {
+                                'booking_id': booking_data['booking_id'],
+                                'client_name': booking_data['client_name'] or 'Не указано',
+                                'client_phone': booking_data['client_phone'] or 'Не указан',
+                                'client_email': booking_data['client_email'] or 'не указан',
+                                'service_name': booking_data['service_name'],
+                                'duration': booking_data['duration_minutes'],
+                                'price': str(booking_data['price']).replace('₽', '').strip(),
+                                'date': booking_data['booking_date'].strftime('%d.%m.%Y'),
+                                'time': booking_data['start_time'].strftime('%H:%M')
+                            }
+                            
+                            data = json.dumps(notification_payload).encode('utf-8')
+                            req = urllib.request.Request(
+                                telegram_bot_url,
+                                data=data,
+                                headers={'Content-Type': 'application/json'}
+                            )
+                            urllib.request.urlopen(req, timeout=5)
+                        except Exception as e:
+                            print(f'Failed to send Telegram notification: {e}')
                     
                     return {
                         'statusCode': 201,
