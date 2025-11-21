@@ -8,6 +8,7 @@ import Icon from '@/components/ui/icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/api';
+import { cacheUtils } from '@/utils/cache';
 
 const SettingsTab = () => {
   const { isAdmin, user } = useAuth();
@@ -59,6 +60,7 @@ const SettingsTab = () => {
         work_priority: systemSettings.work_priority ? 'True' : 'False',
       };
       await api.settings.update(settingsToSave);
+      cacheUtils.invalidateSettings();
       toast({ title: 'Успешно', description: 'Системные настройки сохранены' });
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось сохранить', variant: 'destructive' });

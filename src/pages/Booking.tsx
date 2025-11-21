@@ -54,30 +54,78 @@ const Booking = () => {
   }, []);
 
   const loadServices = async () => {
+    const cacheKey = `services_${ownerId}`;
+    const cacheTimeKey = `services_${ownerId}_time`;
+    const CACHE_DURATION = 60 * 60 * 1000;
+    
     try {
+      const cachedData = localStorage.getItem(cacheKey);
+      const cachedTime = localStorage.getItem(cacheTimeKey);
+      
+      if (cachedData && cachedTime) {
+        const age = Date.now() - parseInt(cachedTime);
+        if (age < CACHE_DURATION) {
+          setServices(JSON.parse(cachedData));
+          return;
+        }
+      }
+      
       const data = await api.services.getAll();
-      setServices(data.services.filter((s: Service) => s.active));
+      const activeServices = data.services.filter((s: Service) => s.active);
+      setServices(activeServices);
+      
+      localStorage.setItem(cacheKey, JSON.stringify(activeServices));
+      localStorage.setItem(cacheTimeKey, String(Date.now()));
     } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить услуги',
-        variant: 'destructive',
-      });
+      const cachedData = localStorage.getItem(cacheKey);
+      if (cachedData) {
+        setServices(JSON.parse(cachedData));
+      } else {
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось загрузить услуги',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
   const loadSettings = async () => {
+    const cacheKey = `settings_${ownerId}`;
+    const cacheTimeKey = `settings_${ownerId}_time`;
+    const CACHE_DURATION = 60 * 60 * 1000;
+    
     try {
+      const cachedData = localStorage.getItem(cacheKey);
+      const cachedTime = localStorage.getItem(cacheTimeKey);
+      
+      if (cachedData && cachedTime) {
+        const age = Date.now() - parseInt(cachedTime);
+        if (age < CACHE_DURATION) {
+          setSettings(JSON.parse(cachedData));
+          return;
+        }
+      }
+      
       const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
       const response = await fetch(`${API_URL}?resource=settings&owner_id=${ownerId}`);
       const data = await response.json();
       const settingsData = data.settings || {};
-      setSettings({
+      const settingsObj = {
         prep_time: Number(settingsData.prep_time) || 0,
         buffer_time: Number(settingsData.buffer_time) || 0,
-      });
+      };
+      setSettings(settingsObj);
+      
+      localStorage.setItem(cacheKey, JSON.stringify(settingsObj));
+      localStorage.setItem(cacheTimeKey, String(Date.now()));
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      const cachedData = localStorage.getItem(cacheKey);
+      if (cachedData) {
+        setSettings(JSON.parse(cachedData));
+      } else {
+        console.error('Failed to load settings:', error);
+      }
     }
   };
 
