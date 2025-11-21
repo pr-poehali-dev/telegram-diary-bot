@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS request returns CORS headers",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": "",
+      "bodyMatcher": "exact"
+    },
+    {
+      "name": "POST notification with booking data",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "booking_id": 1,
+        "client_name": "Иван Петров",
+        "client_phone": "+7 999 123-45-67",
+        "client_email": "ivan@example.com",
+        "service_name": "Стрижка мужская",
+        "duration": 30,
+        "price": "1500.00",
+        "date": "2025-11-25",
+        "time": "14:30"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": "boolean"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
