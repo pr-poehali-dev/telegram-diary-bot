@@ -817,8 +817,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 
                 # DEBUG: Add debug info to response
                 debug_info = {
+                    'date': date,
+                    'day_of_week': day_of_week,
+                    'weekday_num': date_obj.weekday(),
                     'work_time': f'{work_start}-{work_end}',
                     'study_periods_count': len(study_periods),
+                    'study_periods_raw': [dict(sp) for sp in study_periods],
                     'events_count': len(events),
                     'bookings_count': len(bookings),
                     'work_priority': work_priority,
