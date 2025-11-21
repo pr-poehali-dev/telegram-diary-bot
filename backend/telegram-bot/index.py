@@ -302,6 +302,18 @@ def handle_callback(conn, callback_data: str, chat_id: int, message_id: int, own
     
     return '❓ Неизвестное действие'
 
+def is_access_allowed(chat_id: int) -> bool:
+    owner_telegram_id = int(os.environ.get('TELEGRAM_OWNER_ID', '0'))
+    group_id = os.environ.get('TELEGRAM_GROUP_ID', '')
+    
+    if chat_id == owner_telegram_id:
+        return True
+    
+    if group_id and str(chat_id) == group_id:
+        return True
+    
+    return False
+
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     method: str = event.get('httpMethod', 'POST')
     
@@ -335,9 +347,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             chat_id = message['chat']['id']
             text = message.get('text', '')
             
-            # Проверяем, что это владелец
-            owner_telegram_id = int(os.environ.get('TELEGRAM_OWNER_ID', '0'))
-            if chat_id != owner_telegram_id:
+            # Проверяем доступ (владелец или группа)
+            if not is_access_allowed(chat_id):
                 send_telegram_message(chat_id, '❌ У вас нет доступа к этому боту')
                 return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
             
@@ -399,8 +410,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             message_id = callback['message']['message_id']
             callback_data = callback['data']
             
-            owner_telegram_id = int(os.environ.get('TELEGRAM_OWNER_ID', '0'))
-            if chat_id != owner_telegram_id:
+            if not is_access_allowed(chat_id):
                 return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
             
             db_url = os.environ.get('DATABASE_URL')
