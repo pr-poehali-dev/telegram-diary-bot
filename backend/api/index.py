@@ -892,8 +892,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             slot_time_parts = slot['time'].split(':')
                             slot_minutes = int(slot_time_parts[0]) * 60 + int(slot_time_parts[1])
                             
-                            # Оставляем только будущие слоты (с запасом prep_time)
-                            if slot_minutes - prep_time > current_minutes:
+                            # Оставляем только будущие слоты (слот должен быть позже текущего времени)
+                            if slot_minutes > current_minutes:
                                 filtered_slots.append(slot)
                         
                         slots = filtered_slots
