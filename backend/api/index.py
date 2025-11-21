@@ -779,9 +779,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # DEBUG: Log available periods
                     import sys
                     print(f"DEBUG available_slots: date={date}, service_id={service_id}", file=sys.stderr)
+                    print(f"  day_of_week={day_of_week}, weekday()={date_obj.weekday()}", file=sys.stderr)
                     print(f"  work_start={work_start}, work_end={work_end}", file=sys.stderr)
                     print(f"  duration={duration}, prep={prep_time}, buffer={buffer_time}, total={total_time_needed}", file=sys.stderr)
-                    print(f"  study_periods={len(study_periods)}, events={len(events)}, bookings={len(bookings)}", file=sys.stderr)
+                    print(f"  study_periods={len(study_periods)}, data={study_periods}", file=sys.stderr)
+                    print(f"  events={len(events)}, bookings={len(bookings)}", file=sys.stderr)
                     print(f"  available_periods={available_periods}", file=sys.stderr)
                     
                     # Генерируем слоты для каждого доступного периода
