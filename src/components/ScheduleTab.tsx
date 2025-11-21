@@ -14,8 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useBookings } from '@/hooks/useApi';
-import { api } from '@/services/api';
+import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface WeekSchedule {
@@ -23,43 +22,29 @@ interface WeekSchedule {
 }
 
 const ScheduleTab = () => {
-  const { bookings, reload } = useBookings();
+  const { 
+    bookings, 
+    events: contextEvents, 
+    weekSchedule: contextWeekSchedule, 
+    blockedDates: contextBlockedDates,
+    refreshBookings
+  } = useData();
   const { toast } = useToast();
   
   const [date, setDate] = useState<Date>(new Date());
   const [showStudyDialog, setShowStudyDialog] = useState(false);
   const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>({});
-  const [events, setEvents] = useState<any[]>([]);
-  const [blockedDates, setBlockedDates] = useState<string[]>([]);
 
   useEffect(() => {
-    loadScheduleData();
-  }, []);
-
-  const loadScheduleData = async () => {
-    try {
-      const [scheduleRes, eventsRes, blockedRes] = await Promise.all([
-        api.schedule.getWeek(),
-        api.events.getAll(),
-        api.blockedDates.getAll(),
-      ]);
-      
-      // Преобразуем данные расписания в формат WeekSchedule
-      const scheduleMap: WeekSchedule = {};
-      (scheduleRes.schedule || []).forEach((item: any) => {
-        scheduleMap[item.dayOfWeek] = {
-          start: item.startTime,
-          end: item.endTime,
-        };
-      });
-      
-      setWeekSchedule(scheduleMap);
-      setEvents(eventsRes.events || []);
-      setBlockedDates((blockedRes.blockedDates || []).map((b: any) => b.date));
-    } catch (error) {
-      console.error('Ошибка загрузки данных расписания:', error);
-    }
-  };
+    const scheduleMap: WeekSchedule = {};
+    (contextWeekSchedule || []).forEach((item: any) => {
+      scheduleMap[item.dayOfWeek] = {
+        start: item.startTime,
+        end: item.endTime,
+      };
+    });
+    setWeekSchedule(scheduleMap);
+  }, [contextWeekSchedule]);
 
   const getDayOfWeek = (date: Date): string => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -134,12 +119,13 @@ const ScheduleTab = () => {
 
   const getEventsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return events.filter(e => e.date === dateStr);
+    return (contextEvents || []).filter(e => e.date === dateStr);
   };
 
   const isDateBlocked = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return blockedDates.includes(dateStr);
+    const blockedDateStrings = (contextBlockedDates || []).map((b: any) => b.date);
+    return blockedDateStrings.includes(dateStr);
   };
 
   const selectedDateBookings = getBookingsForDate(date);
