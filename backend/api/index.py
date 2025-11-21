@@ -813,11 +813,25 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             
                             current += 30  # 30-minute intervals
                 
+                # DEBUG: Add debug info to response
+                debug_info = {
+                    'work_time': f'{work_start}-{work_end}',
+                    'study_periods_count': len(study_periods),
+                    'events_count': len(events),
+                    'bookings_count': len(bookings),
+                    'work_priority': work_priority,
+                    'available_periods': [(p[0], p[1]) for p in available_periods],
+                    'duration': duration,
+                    'prep': prep_time,
+                    'buffer': buffer_time,
+                    'total_needed': total_time_needed
+                }
+                
                 return {
                     'statusCode': 200,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                     'isBase64Encoded': False,
-                    'body': json.dumps({'slots': slots})
+                    'body': json.dumps({'slots': slots, 'debug': debug_info})
                 }
         
         # WEEK SCHEDULE (долгосрочное расписание учёбы)

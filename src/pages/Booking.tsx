@@ -120,6 +120,7 @@ const Booking = () => {
       const data = await response.json();
       
       console.log('Received slots:', data.slots);
+      console.log('DEBUG INFO:', data.debug);
       
       setAvailableSlots(data.slots || []);
       
