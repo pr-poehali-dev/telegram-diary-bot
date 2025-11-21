@@ -775,7 +775,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     response_text = handle_command(conn, chat_id, text, 1)
                 
                 if response_text:
-                    send_telegram_message(chat_id, response_text)
+                    # Всегда добавляем клавиатуру для владельца
+                    keyboard = get_main_keyboard()
+                    send_telegram_message(chat_id, response_text, keyboard)
             
             finally:
                 conn.close()
@@ -794,7 +796,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             try:
                 response_text = handle_callback(conn, callback_data, chat_id, message_id, 1)
-                send_telegram_message(chat_id, response_text)
+                keyboard = get_main_keyboard()
+                send_telegram_message(chat_id, response_text, keyboard)
             finally:
                 conn.close()
         
