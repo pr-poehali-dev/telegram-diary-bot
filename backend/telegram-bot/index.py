@@ -26,6 +26,17 @@ def get_main_keyboard() -> Dict:
         'persistent': True
     }
 
+def get_client_keyboard() -> Dict:
+    return {
+        'keyboard': [
+            [{'text': '📝 Записаться на сеанс'}],
+            [{'text': '📅 Мои записи'}],
+            [{'text': '✍️ Зарегистрироваться'}]
+        ],
+        'resize_keyboard': True,
+        'persistent': True
+    }
+
 def send_telegram_message(chat_id: int, text: str, reply_markup: Optional[Dict] = None) -> bool:
     bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
     url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
@@ -643,7 +654,53 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 
                 # Команды для клиентов
                 if is_client and not is_owner:
-                    if text == '/mybookings' or text == '/start':
+                    if text == '/start':
+                        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                            cur.execute('''
+                                SELECT b.id, b.booking_date, b.start_time, b.status,
+                                       s.name as service_name, s.price
+                                FROM bookings b
+                                LEFT JOIN clients c ON b.client_id = c.id
+                                LEFT JOIN services s ON b.service_id = s.id
+                                WHERE c.user_id = %s AND b.booking_date >= CURRENT_DATE
+                                ORDER BY b.booking_date, b.start_time
+                                LIMIT 1
+                            ''', (user_id,))
+                            
+                            booking = cur.fetchone()
+                            
+                            cur.execute('SELECT name FROM users WHERE id = %s', (user_id,))
+                            user_name = cur.fetchone()['name']
+                            
+                            response_text = f'👋 Привет, {user_name}!\n\n'
+                            
+                            if booking:
+                                status_emoji = {'pending': '⏳', 'confirmed': '✅', 'completed': '✔️', 'cancelled': '❌'}
+                                emoji = status_emoji.get(booking['status'], '❓')
+                                date_str = booking['booking_date'].strftime('%d.%m.%Y')
+                                time_str = booking['start_time'].strftime('%H:%M')
+                                
+                                status_text = {
+                                    'pending': 'Ожидает подтверждения',
+                                    'confirmed': 'Подтверждена',
+                                    'completed': 'Завершена',
+                                    'cancelled': 'Отменена'
+                                }.get(booking['status'], booking['status'])
+                                
+                                response_text += f'📌 <b>Ваша ближайшая запись:</b>\n\n'
+                                response_text += f'{emoji} <b>Запись #{booking["id"]}</b>\n'
+                                response_text += f'📆 {date_str} в {time_str}\n'
+                                response_text += f'💇 {booking["service_name"]}\n'
+                                response_text += f'💰 {booking["price"]}₽\n'
+                                response_text += f'📊 {status_text}'
+                            else:
+                                response_text += '📭 У вас пока нет предстоящих записей.'
+                            
+                            keyboard = get_client_keyboard()
+                            send_telegram_message(chat_id, response_text, keyboard)
+                            return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    elif text == '📅 Мои записи' or text == '/mybookings':
                         with conn.cursor(cursor_factory=RealDictCursor) as cur:
                             cur.execute('''
                                 SELECT b.id, b.booking_date, b.start_time, b.status,
@@ -658,7 +715,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             bookings = cur.fetchall()
                             
                             if bookings:
-                                send_telegram_message(chat_id, '📅 <b>Ваши записи:</b>\n')
+                                send_telegram_message(chat_id, '📅 <b>Все ваши записи:</b>\n')
                                 
                                 for booking in bookings:
                                     status_emoji = {'pending': '⏳', 'confirmed': '✅', 'completed': '✔️', 'cancelled': '❌'}
@@ -679,7 +736,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                     booking_text += f'💰 {booking["price"]}₽\n'
                                     booking_text += f'📊 {status_text}'
                                     
-                                    # Добавляем кнопку отмены только для активных записей
                                     if booking['status'] in ['pending', 'confirmed']:
                                         reply_markup = {
                                             'inline_keyboard': [[{
@@ -695,6 +751,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                 send_telegram_message(chat_id, response_text)
                             
                             return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    elif text == '📝 Записаться на сеанс':
+                        response_text = '🌐 <b>Онлайн-запись</b>\n\nДля записи на сеанс перейдите на наш сайт:\n👉 https://your-booking-site.com'
+                        send_telegram_message(chat_id, response_text)
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    elif text == '✍️ Зарегистрироваться':
+                        response_text = '✍️ <b>Регистрация</b>\n\nВы уже зарегистрированы в системе!\n\nИспользуйте кнопку "📝 Записаться на сеанс" для создания новой записи.'
+                        send_telegram_message(chat_id, response_text)
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                     
                     elif text == '/cancel':
                         # Показываем список записей с кнопками отмены
@@ -774,18 +840,44 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                     
                     else:
-                        response_text = '''💬 <b>Доступные команды:</b>
-
-/mybookings - Мои записи
-/cancel ID - Отменить запись
-
-📝 Для новой записи перейдите на сайт.'''
+                        response_text = '❓ Используйте кнопки меню для навигации.'
+                        keyboard = get_client_keyboard()
+                        send_telegram_message(chat_id, response_text, keyboard)
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                
+                # Новые пользователи (не зарегистрированы)
+                if not is_client and not is_owner:
+                    if text == '/start':
+                        response_text = '👋 <b>Добро пожаловать!</b>\n\n'
+                        response_text += 'Для работы с ботом выберите действие:\n\n'
+                        response_text += '📝 <b>Записаться на сеанс</b> - перейти на сайт для записи\n'
+                        response_text += '✍️ <b>Зарегистрироваться</b> - создать профиль в боте\n\n'
+                        response_text += 'Или используйте команду:\n'
+                        response_text += '<code>/start +79001234567</code> - если вы уже записывались'
+                        
+                        keyboard = get_client_keyboard()
+                        send_telegram_message(chat_id, response_text, keyboard)
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    elif text == '📝 Записаться на сеанс':
+                        response_text = '🌐 <b>Онлайн-запись</b>\n\nДля записи на сеанс перейдите на наш сайт:\n👉 https://your-booking-site.com'
                         send_telegram_message(chat_id, response_text)
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    elif text == '✍️ Зарегистрироваться':
+                        response_text = '✍️ <b>Регистрация</b>\n\n📝 Отправьте ваше <b>имя</b>:'
+                        send_telegram_message(chat_id, response_text)
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    else:
+                        response_text = '❓ Используйте кнопки меню или команду:\n<code>/start +79001234567</code>'
+                        keyboard = get_client_keyboard()
+                        send_telegram_message(chat_id, response_text, keyboard)
                         return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                 
                 # Команды только для владельца
                 if not is_owner:
-                    response_text = '❌ У вас нет доступа к командам администратора.\n\nДля привязки аккаунта используйте:\n/start +79001234567'
+                    response_text = '❌ У вас нет доступа к командам администратора.'
                     send_telegram_message(chat_id, response_text)
                     return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                 
