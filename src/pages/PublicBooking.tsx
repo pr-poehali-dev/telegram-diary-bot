@@ -11,6 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/api';
@@ -46,6 +53,8 @@ const PublicBooking = () => {
     phone: '',
     email: '',
   });
+  const [showTelegramDialog, setShowTelegramDialog] = useState(false);
+  const [telegramLink, setTelegramLink] = useState('');
 
   useEffect(() => {
     loadBookingData();
@@ -227,14 +236,14 @@ const PublicBooking = () => {
         description: `Ваша запись ожидает подтверждения. Вы получите уведомление.`,
       });
       
-      // Показываем модалку с инструкцией
+      // Формируем ссылку на Telegram с командой
+      const telegramUrl = `https://t.me/Calendar_record_bot?start=${phoneForBot}`;
+      setTelegramLink(telegramUrl);
+      
+      // Показываем диалог через 1 секунду
       setTimeout(() => {
-        toast({
-          title: '📱 Получайте уведомления в Telegram',
-          description: `Напишите боту @Calendar_record_bot и отправьте: /start ${phoneForBot}`,
-          duration: 10000,
-        });
-      }, 1500);
+        setShowTelegramDialog(true);
+      }, 1000);
 
       setStep(1);
       setSelectedService('');
@@ -442,6 +451,54 @@ const PublicBooking = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showTelegramDialog} onOpenChange={setShowTelegramDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Icon name="Send" className="text-blue-500" />
+              Получайте уведомления в Telegram
+            </DialogTitle>
+            <DialogDescription>
+              Нажмите на кнопку ниже, чтобы автоматически открыть бота и подключить уведомления
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
+                📱 Вы будете получать:
+              </p>
+              <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 ml-4">
+                <li>✅ Подтверждение записи</li>
+                <li>⏰ Напоминание перед визитом</li>
+                <li>📝 Информацию об изменениях</li>
+              </ul>
+            </div>
+
+            <Button
+              onClick={() => window.open(telegramLink, '_blank')}
+              className="w-full"
+              size="lg"
+            >
+              <Icon name="Send" className="mr-2" size={20} />
+              Открыть Telegram бота
+            </Button>
+
+            <p className="text-xs text-center text-muted-foreground">
+              Или скопируйте ссылку: <br />
+              <a 
+                href={telegramLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline break-all"
+              >
+                {telegramLink}
+              </a>
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
