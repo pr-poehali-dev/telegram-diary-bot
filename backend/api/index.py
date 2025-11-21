@@ -631,6 +631,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     work_end = settings.get('work_end', '20:00')
                     prep_time = int(settings.get('prep_time', '0'))
                     buffer_time = int(settings.get('buffer_time', '0'))
+                    work_priority = settings.get('work_priority', 'False') == 'True'
                     
                     # Total time needed: prep + service + buffer
                     total_time_needed = prep_time + duration + buffer_time
@@ -681,43 +682,19 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         parts = time_str.split(':')
                         return int(parts[0]) * 60 + int(parts[1])
                     
-                    # Если есть расписание учёбы, используем его, иначе work_start/work_end
-                    if study_periods:
-                        # Создаём доступные периоды из учёбы, "вырезая" события
-                        available_periods = []
-                        
-                        for study in study_periods:
-                            study_start = time_to_minutes(study['start_time'])
-                            study_end = time_to_minutes(study['end_time'])
-                            
-                            # Вырезаем время событий из учёбы
-                            current_start = study_start
-                            
-                            # Сортируем события по времени начала
-                            sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time']))
-                            
-                            for event in sorted_events:
-                                event_start = time_to_minutes(event['start_time'])
-                                event_end = time_to_minutes(event['end_time'])
-                                
-                                # Если событие внутри учёбы, создаём период до события
-                                if event_start > current_start and event_start < study_end:
-                                    if event_start - current_start >= total_time_needed:
-                                        available_periods.append((current_start, min(event_start, study_end)))
-                                    current_start = max(event_end, current_start)
-                            
-                            # Добавляем оставшееся время после последнего события
-                            if current_start < study_end and study_end - current_start >= total_time_needed:
-                                available_periods.append((current_start, study_end))
-                    else:
-                        # Используем обычные рабочие часы
+                    # ЛОГИКА ПРИОРИТЕТОВ (ТЗ п.2.7):
+                    # work_priority=True: Базовое время = work_start-work_end, учёба игнорируется
+                    # work_priority=False: Базовое время = (work_start-work_end) минус (учёба)
+                    
+                    available_periods = []
+                    
+                    if work_priority:
+                        # Приоритет рабочего времени: используем work_start-work_end
+                        # События вырезают время из рабочего периода
                         start_minutes = time_to_minutes(work_start)
                         end_minutes = time_to_minutes(work_end)
                         
-                        # Вырезаем события из рабочего времени
-                        available_periods = []
                         current_start = start_minutes
-                        
                         sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time']))
                         
                         for event in sorted_events:
@@ -731,6 +708,75 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         
                         if current_start < end_minutes and end_minutes - current_start >= total_time_needed:
                             available_periods.append((current_start, end_minutes))
+                    
+                    else:
+                        # Учёба имеет приоритет: доступное время = work_start-work_end МИНУС учёба МИНУС события
+                        work_start_min = time_to_minutes(work_start)
+                        work_end_min = time_to_minutes(work_end)
+                        
+                        if study_periods:
+                            # Создаём свободные периоды, вычитая учёбу из рабочего времени
+                            # Затем вычитаем события из оставшихся периодов
+                            
+                            # Шаг 1: Вычитаем учёбу из work_start-work_end
+                            temp_periods = [(work_start_min, work_end_min)]
+                            
+                            for study in study_periods:
+                                study_start = time_to_minutes(study['start_time'])
+                                study_end = time_to_minutes(study['end_time'])
+                                
+                                new_temp_periods = []
+                                for period_start, period_end in temp_periods:
+                                    # Учёба полностью вне периода
+                                    if study_end <= period_start or study_start >= period_end:
+                                        new_temp_periods.append((period_start, period_end))
+                                    # Учёба перекрывает начало
+                                    elif study_start <= period_start < study_end < period_end:
+                                        new_temp_periods.append((study_end, period_end))
+                                    # Учёба перекрывает конец
+                                    elif period_start < study_start < period_end <= study_end:
+                                        new_temp_periods.append((period_start, study_start))
+                                    # Учёба внутри периода
+                                    elif period_start < study_start and study_end < period_end:
+                                        new_temp_periods.append((period_start, study_start))
+                                        new_temp_periods.append((study_end, period_end))
+                                    # Учёба полностью покрывает период - ничего не добавляем
+                                
+                                temp_periods = new_temp_periods
+                            
+                            # Шаг 2: Вычитаем события из оставшихся периодов
+                            sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time']))
+                            
+                            for period_start, period_end in temp_periods:
+                                current_start = period_start
+                                
+                                for event in sorted_events:
+                                    event_start = time_to_minutes(event['start_time'])
+                                    event_end = time_to_minutes(event['end_time'])
+                                    
+                                    if event_start > current_start and event_start < period_end:
+                                        if event_start - current_start >= total_time_needed:
+                                            available_periods.append((current_start, event_start))
+                                        current_start = max(event_end, current_start)
+                                
+                                if current_start < period_end and period_end - current_start >= total_time_needed:
+                                    available_periods.append((current_start, period_end))
+                        else:
+                            # Нет учёбы - работаем как раньше с work_start-work_end
+                            current_start = work_start_min
+                            sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time']))
+                            
+                            for event in sorted_events:
+                                event_start = time_to_minutes(event['start_time'])
+                                event_end = time_to_minutes(event['end_time'])
+                                
+                                if event_start > current_start and event_start < work_end_min:
+                                    if event_start - current_start >= total_time_needed:
+                                        available_periods.append((current_start, event_start))
+                                    current_start = max(event_end, current_start)
+                            
+                            if current_start < work_end_min and work_end_min - current_start >= total_time_needed:
+                                available_periods.append((current_start, work_end_min))
                     
                     # Генерируем слоты для каждого доступного периода
                     for period_start, period_end in available_periods:
