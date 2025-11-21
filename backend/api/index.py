@@ -585,6 +585,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 owner_id = event.get('queryStringParameters', {}).get('owner_id')
                 date = event.get('queryStringParameters', {}).get('date')
                 service_id = event.get('queryStringParameters', {}).get('service_id')
+                current_time_str = event.get('queryStringParameters', {}).get('current_time')
                 
                 if not all([owner_id, date, service_id]):
                     return {
@@ -815,26 +816,24 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             
                             current += 30  # 30-minute intervals
                 
-                # Фильтруем прошедшие слоты для текущего дня
-                import datetime as dt
-                today = dt.date.today()
-                request_date = dt.datetime.strptime(date, '%Y-%m-%d').date()
-                
-                if request_date == today:
-                    # Для сегодняшнего дня убираем прошедшие слоты
-                    current_time = dt.datetime.now()
-                    current_minutes = current_time.hour * 60 + current_time.minute
-                    
-                    filtered_slots = []
-                    for slot in slots:
-                        slot_time_parts = slot['time'].split(':')
-                        slot_minutes = int(slot_time_parts[0]) * 60 + int(slot_time_parts[1])
+                # Фильтруем прошедшие слоты если передано текущее время
+                if current_time_str:
+                    try:
+                        current_time_parts = current_time_str.split(':')
+                        current_minutes = int(current_time_parts[0]) * 60 + int(current_time_parts[1])
                         
-                        # Оставляем только будущие слоты (с запасом prep_time)
-                        if slot_minutes - prep_time > current_minutes:
-                            filtered_slots.append(slot)
-                    
-                    slots = filtered_slots
+                        filtered_slots = []
+                        for slot in slots:
+                            slot_time_parts = slot['time'].split(':')
+                            slot_minutes = int(slot_time_parts[0]) * 60 + int(slot_time_parts[1])
+                            
+                            # Оставляем только будущие слоты (с запасом prep_time)
+                            if slot_minutes - prep_time > current_minutes:
+                                filtered_slots.append(slot)
+                        
+                        slots = filtered_slots
+                    except:
+                        pass
                 
                 # DEBUG: Add debug info to response
                 debug_info = {

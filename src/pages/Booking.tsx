@@ -116,8 +116,12 @@ const Booking = () => {
       const day = String(date.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
+      // Добавляем текущее время для фильтрации прошедших слотов
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
       const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
-      const url = `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}`;
+      const url = `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}&current_time=${currentTime}`;
       
       console.log('Loading slots from:', url);
       
