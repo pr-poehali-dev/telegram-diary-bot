@@ -110,10 +110,20 @@ const PublicBooking = () => {
       const dateStr = `${year}-${month}-${day}`;
       
       const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(date);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      const isToday = selectedDate.getTime() === today.getTime();
       
       const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
-      const url = `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}&current_time=${currentTime}`;
+      let url = `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}`;
+      
+      if (isToday) {
+        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        url += `&current_time=${currentTime}`;
+      }
       
       const response = await fetch(url);
       const data = await response.json();
