@@ -231,7 +231,7 @@ const PublicBooking = () => {
       setTimeout(() => {
         toast({
           title: '📱 Получайте уведомления в Telegram',
-          description: `Напишите боту @your_bot и отправьте: /start ${phoneForBot}`,
+          description: `Напишите боту @Calendar_record_bot и отправьте: /start ${phoneForBot}`,
           duration: 10000,
         });
       }, 1500);
