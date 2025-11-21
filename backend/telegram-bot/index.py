@@ -324,18 +324,80 @@ def handle_callback(conn, callback_data: str, chat_id: int, message_id: int, own
     
     if action == 'confirm':
         booking_id = int(parts[1])
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Получаем данные записи и клиента
+            cur.execute('''
+                SELECT b.booking_date, b.start_time, u.telegram_id, u.name as client_name,
+                       s.name as service_name
+                FROM bookings b
+                LEFT JOIN clients c ON b.client_id = c.id
+                LEFT JOIN users u ON c.user_id = u.id
+                LEFT JOIN services s ON b.service_id = s.id
+                WHERE b.id = %s
+            ''', (booking_id,))
+            
+            booking = cur.fetchone()
+            
+            # Обновляем статус
             cur.execute('UPDATE bookings SET status = %s WHERE id = %s AND owner_id = %s',
                        ('confirmed', booking_id, owner_id))
             conn.commit()
+            
+            # Отправляем уведомление клиенту, если у него есть telegram_id
+            if booking and booking['telegram_id']:
+                client_telegram_id = booking['telegram_id']
+                date_str = booking['booking_date'].strftime('%d.%m.%Y')
+                time_str = booking['start_time'].strftime('%H:%M')
+                
+                client_message = f'''✅ <b>Запись подтверждена!</b>
+
+📆 Дата: {date_str}
+🕐 Время: {time_str}
+💇 Услуга: {booking["service_name"]}
+
+До встречи, {booking["client_name"]}! 👋'''
+                
+                send_telegram_message(client_telegram_id, client_message)
+        
         return f'✅ Запись #{booking_id} подтверждена!'
     
     elif action == 'cancel':
         booking_id = int(parts[1])
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Получаем данные записи и клиента
+            cur.execute('''
+                SELECT b.booking_date, b.start_time, u.telegram_id, u.name as client_name,
+                       s.name as service_name
+                FROM bookings b
+                LEFT JOIN clients c ON b.client_id = c.id
+                LEFT JOIN users u ON c.user_id = u.id
+                LEFT JOIN services s ON b.service_id = s.id
+                WHERE b.id = %s
+            ''', (booking_id,))
+            
+            booking = cur.fetchone()
+            
+            # Обновляем статус
             cur.execute('UPDATE bookings SET status = %s WHERE id = %s AND owner_id = %s',
                        ('cancelled', booking_id, owner_id))
             conn.commit()
+            
+            # Отправляем уведомление клиенту, если у него есть telegram_id
+            if booking and booking['telegram_id']:
+                client_telegram_id = booking['telegram_id']
+                date_str = booking['booking_date'].strftime('%d.%m.%Y')
+                time_str = booking['start_time'].strftime('%H:%M')
+                
+                client_message = f'''❌ <b>Запись отменена</b>
+
+📆 Дата: {date_str}
+🕐 Время: {time_str}
+💇 Услуга: {booking["service_name"]}
+
+Если хотите записаться снова, перейдите на сайт.'''
+                
+                send_telegram_message(client_telegram_id, client_message)
+        
         return f'❌ Запись #{booking_id} отменена'
     
     return '❓ Неизвестное действие'
@@ -415,22 +477,178 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             chat_id = message['chat']['id']
             text = message.get('text', '')
             
-            # Логирование для отладки
-            owner_id = os.environ.get('TELEGRAM_OWNER_ID', '0')
-            group_id = os.environ.get('TELEGRAM_GROUP_ID', '')
-            debug_msg = f'🔍 DEBUG:\nChat ID: {chat_id}\nOwner ID: {owner_id}\nGroup ID: {group_id}\nAccess: {is_access_allowed(chat_id)}'
-            print(debug_msg)
-            
-            # Проверяем доступ (владелец или группа)
-            if not is_access_allowed(chat_id):
-                send_telegram_message(chat_id, f'❌ У вас нет доступа к этому боту\n\n{debug_msg}')
-                return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
-            
             db_url = os.environ.get('DATABASE_URL')
             conn = psycopg2.connect(db_url)
             
             try:
-                # Обработка команд с параметрами
+                # Определяем роль пользователя
+                owner_telegram_id = int(os.environ.get('TELEGRAM_OWNER_ID', '0'))
+                group_id = os.environ.get('TELEGRAM_GROUP_ID', '')
+                
+                is_owner = is_access_allowed(chat_id)
+                is_client = False
+                user_id = None
+                
+                # Проверяем, зарегистрирован ли как клиент
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute('SELECT id, role FROM users WHERE telegram_id = %s', (chat_id,))
+                    user = cur.fetchone()
+                    if user:
+                        is_client = True
+                        user_id = user['id']
+                
+                # Команда привязки по номеру телефона (доступна всем)
+                if text.startswith('/start '):
+                    phone = text[7:].strip()
+                    
+                    # Очищаем номер от пробелов и лишних символов
+                    phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+                    
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        cur.execute('SELECT id, name FROM users WHERE phone = %s', (phone,))
+                        user_data = cur.fetchone()
+                        
+                        if user_data:
+                            # Обновляем telegram_id
+                            cur.execute('UPDATE users SET telegram_id = %s WHERE id = %s', (chat_id, user_data['id']))
+                            conn.commit()
+                            
+                            # Получаем записи клиента
+                            cur.execute('''
+                                SELECT b.id, b.booking_date, b.start_time, b.status,
+                                       s.name as service_name
+                                FROM bookings b
+                                LEFT JOIN clients c ON b.client_id = c.id
+                                LEFT JOIN services s ON b.service_id = s.id
+                                WHERE c.user_id = %s AND b.booking_date >= CURRENT_DATE
+                                ORDER BY b.booking_date, b.start_time
+                            ''', (user_data['id'],))
+                            
+                            bookings = cur.fetchall()
+                            
+                            response_text = f'✅ <b>Привязка успешна!</b>\n\nПривет, {user_data["name"]}! 👋\n\n'
+                            
+                            if bookings:
+                                response_text += f'📅 <b>Ваши предстоящие записи:</b>\n\n'
+                                for booking in bookings:
+                                    status_emoji = {'pending': '⏳', 'confirmed': '✅', 'completed': '✔️', 'cancelled': '❌'}
+                                    emoji = status_emoji.get(booking['status'], '❓')
+                                    date_str = booking['booking_date'].strftime('%d.%m.%Y')
+                                    time_str = booking['start_time'].strftime('%H:%M')
+                                    
+                                    response_text += f'{emoji} {date_str} в {time_str}\n'
+                                    response_text += f'   {booking["service_name"]}\n\n'
+                            else:
+                                response_text += '📭 У вас пока нет записей.\n\n'
+                            
+                            response_text += '💬 <b>Команды:</b>\n'
+                            response_text += '/mybookings - Мои записи\n'
+                            response_text += '/cancel ID - Отменить запись'
+                            
+                            send_telegram_message(chat_id, response_text)
+                            return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                        else:
+                            response_text = f'❌ Номер {phone} не найден в системе.\n\nСначала создайте запись на сайте, затем привяжите Telegram.'
+                            send_telegram_message(chat_id, response_text)
+                            return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                
+                # Команды для клиентов
+                if is_client and not is_owner:
+                    if text == '/mybookings' or text == '/start':
+                        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                            cur.execute('''
+                                SELECT b.id, b.booking_date, b.start_time, b.status,
+                                       s.name as service_name, s.price
+                                FROM bookings b
+                                LEFT JOIN clients c ON b.client_id = c.id
+                                LEFT JOIN services s ON b.service_id = s.id
+                                WHERE c.user_id = %s AND b.booking_date >= CURRENT_DATE
+                                ORDER BY b.booking_date, b.start_time
+                            ''', (user_id,))
+                            
+                            bookings = cur.fetchall()
+                            
+                            if bookings:
+                                response_text = f'📅 <b>Ваши записи:</b>\n\n'
+                                for booking in bookings:
+                                    status_emoji = {'pending': '⏳', 'confirmed': '✅', 'completed': '✔️', 'cancelled': '❌'}
+                                    emoji = status_emoji.get(booking['status'], '❓')
+                                    date_str = booking['booking_date'].strftime('%d.%m.%Y')
+                                    time_str = booking['start_time'].strftime('%H:%M')
+                                    
+                                    status_text = {
+                                        'pending': 'Ожидает подтверждения',
+                                        'confirmed': 'Подтверждена',
+                                        'completed': 'Завершена',
+                                        'cancelled': 'Отменена'
+                                    }.get(booking['status'], booking['status'])
+                                    
+                                    response_text += f'{emoji} <b>Запись #{booking["id"]}</b>\n'
+                                    response_text += f'📆 {date_str} в {time_str}\n'
+                                    response_text += f'💇 {booking["service_name"]}\n'
+                                    response_text += f'💰 {booking["price"]}₽\n'
+                                    response_text += f'📊 {status_text}\n\n'
+                                
+                                response_text += '💡 Для отмены: /cancel ID'
+                            else:
+                                response_text = '📭 У вас нет предстоящих записей.'
+                            
+                            send_telegram_message(chat_id, response_text)
+                            return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    elif text.startswith('/cancel '):
+                        try:
+                            booking_id = int(text[8:])
+                            
+                            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                                # Проверяем, что запись принадлежит клиенту
+                                cur.execute('''
+                                    SELECT b.id, b.status
+                                    FROM bookings b
+                                    LEFT JOIN clients c ON b.client_id = c.id
+                                    WHERE b.id = %s AND c.user_id = %s
+                                ''', (booking_id, user_id))
+                                
+                                booking = cur.fetchone()
+                                
+                                if not booking:
+                                    response_text = '❌ Запись не найдена или не принадлежит вам.'
+                                elif booking['status'] == 'cancelled':
+                                    response_text = '❌ Запись уже отменена.'
+                                elif booking['status'] == 'completed':
+                                    response_text = '❌ Нельзя отменить завершённую запись.'
+                                else:
+                                    cur.execute(
+                                        'UPDATE bookings SET status = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+                                        ('cancelled', booking_id)
+                                    )
+                                    conn.commit()
+                                    response_text = f'✅ Запись #{booking_id} отменена.'
+                            
+                            send_telegram_message(chat_id, response_text)
+                            return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                        except ValueError:
+                            response_text = '❌ Неверный формат. Используйте: /cancel ID'
+                            send_telegram_message(chat_id, response_text)
+                            return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                    
+                    else:
+                        response_text = '''💬 <b>Доступные команды:</b>
+
+/mybookings - Мои записи
+/cancel ID - Отменить запись
+
+📝 Для новой записи перейдите на сайт.'''
+                        send_telegram_message(chat_id, response_text)
+                        return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                
+                # Команды только для владельца
+                if not is_owner:
+                    response_text = '❌ У вас нет доступа к командам администратора.\n\nДля привязки аккаунта используйте:\n/start +79001234567'
+                    send_telegram_message(chat_id, response_text)
+                    return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
+                
+                # Обработка команд владельца с параметрами
                 if text.startswith('/event_add '):
                     parts = text[11:].split(' ', 3)
                     if len(parts) >= 4:
