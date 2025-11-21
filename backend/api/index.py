@@ -537,30 +537,52 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             elif method == 'POST':
                 body_data = json.loads(event.get('body', '{}'))
                 
-                with conn.cursor() as cur:
-                    user_query = '''
-                        INSERT INTO users (telegram_id, role, name, phone, email)
-                        VALUES (%s, %s, %s, %s, %s)
-                        RETURNING id
-                    '''
-                    cur.execute(user_query, (
-                        body_data.get('telegram_id', 0),
-                        'client',
-                        body_data['name'],
-                        body_data.get('phone', ''),
-                        body_data.get('email', '')
-                    ))
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    # Ищем существующего пользователя по телефону
+                    cur.execute('SELECT id FROM users WHERE phone = %s', (body_data.get('phone', ''),))
+                    existing_user = cur.fetchone()
                     
-                    user_id = cur.fetchone()[0]
+                    if existing_user:
+                        user_id = existing_user['id']
+                        
+                        # Проверяем, есть ли клиент для этого владельца
+                        cur.execute(
+                            'SELECT id FROM clients WHERE user_id = %s AND owner_id = %s',
+                            (user_id, body_data['owner_id'])
+                        )
+                        existing_client = cur.fetchone()
+                        
+                        if existing_client:
+                            client_id = existing_client['id']
+                        else:
+                            # Создаём клиента для существующего пользователя
+                            cur.execute(
+                                'INSERT INTO clients (user_id, owner_id, total_visits) VALUES (%s, %s, %s) RETURNING id',
+                                (user_id, body_data['owner_id'], 0)
+                            )
+                            client_id = cur.fetchone()['id']
+                    else:
+                        # Создаём нового пользователя (без telegram_id для веб-клиентов)
+                        cur.execute('''
+                            INSERT INTO users (role, name, phone, email)
+                            VALUES (%s, %s, %s, %s)
+                            RETURNING id
+                        ''', (
+                            'client',
+                            body_data['name'],
+                            body_data.get('phone', ''),
+                            body_data.get('email', '')
+                        ))
+                        
+                        user_id = cur.fetchone()['id']
+                        
+                        # Создаём клиента
+                        cur.execute(
+                            'INSERT INTO clients (user_id, owner_id, total_visits) VALUES (%s, %s, %s) RETURNING id',
+                            (user_id, body_data['owner_id'], 0)
+                        )
+                        client_id = cur.fetchone()['id']
                     
-                    client_query = '''
-                        INSERT INTO clients (user_id, owner_id, total_visits)
-                        VALUES (%s, %s, %s)
-                        RETURNING id
-                    '''
-                    cur.execute(client_query, (user_id, body_data['owner_id'], 0))
-                    
-                    client_id = cur.fetchone()[0]
                     conn.commit()
                     
                     return {
@@ -570,7 +592,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             'Access-Control-Allow-Origin': '*'
                         },
                         'isBase64Encoded': False,
-                        'body': json.dumps({'id': client_id, 'message': 'Client created'})
+                        'body': json.dumps({'id': client_id, 'message': 'Client created or found'})
                     }
         
         # SETTINGS
