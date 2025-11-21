@@ -823,10 +823,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             # Шаг 2: Вычитаем события из оставшихся периодов
                             sorted_events = sorted(events, key=lambda e: time_to_minutes(e['start_time'])) if events else []
                             
-                            # Логирование для дебага
-                            print(f'DEBUG: temp_periods after study removal: {temp_periods}')
-                            print(f'DEBUG: events count: {len(events)}')
-                            
                             for period_start, period_end in temp_periods:
                                 current_start = period_start
                                 
@@ -841,8 +837,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                 
                                 if current_start < period_end and period_end - current_start >= total_time_needed:
                                     available_periods.append((current_start, period_end))
-                            
-                            print(f'DEBUG: available_periods: {available_periods}')
                         else:
                             # Нет учёбы - работаем как раньше с work_start-work_end
                             current_start = work_start_min
@@ -860,17 +854,39 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             if current_start < work_end_min and work_end_min - current_start >= total_time_needed:
                                 available_periods.append((current_start, work_end_min))
                     # Генерируем слоты для каждого доступного периода
-                    for period_start, period_end in available_periods:
-                        # Начинаем с начала периода, но первый слот должен начинаться с prep_time
+                    for period_idx, (period_start, period_end) in enumerate(available_periods):
                         current = period_start
+                        is_first_period = (period_idx == 0)
+                        is_last_period = (period_idx == len(available_periods) - 1)
                         
-                        while current + total_time_needed <= period_end:
+                        # Для первого периода: первый слот может начинаться БЕЗ prep_time
+                        first_slot_in_period = True
+                        
+                        while True:
+                            # Определяем нужно ли prep_time для этого слота
+                            current_prep = 0 if (is_first_period and first_slot_in_period) else prep_time
+                            
+                            # Время, необходимое для слота с учётом текущего prep
+                            slot_time_needed = current_prep + duration + buffer_time
+                            
+                            # Проверяем, влезает ли слот в период
+                            slot_fits = current + slot_time_needed <= period_end
+                            
+                            # Для последнего периода: последний слот может выходить за пределы на 60 мин
+                            if not slot_fits and is_last_period:
+                                overhang = (current + slot_time_needed) - period_end
+                                if overhang <= 60:  # Допускаем выход до 60 минут
+                                    slot_fits = True
+                            
+                            if not slot_fits:
+                                break
+                            
                             # Клиент видит время начала услуги (после prep_time)
-                            slot_start = f"{(current + prep_time) // 60:02d}:{(current + prep_time) % 60:02d}"
+                            slot_start = f"{(current + current_prep) // 60:02d}:{(current + current_prep) % 60:02d}"
                             
                             # Actual occupied time: prep BEFORE + service + buffer AFTER
                             actual_start_min = current
-                            actual_end_min = current + total_time_needed
+                            actual_end_min = current + slot_time_needed
                             
                             # Check if slot conflicts with existing bookings
                             is_available = True
@@ -885,6 +901,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             if is_available:
                                 slots.append({'time': slot_start, 'available': True})
                             
+                            first_slot_in_period = False
                             current += 30  # 30-minute intervals
                 
                 # Фильтруем прошедшие слоты если передано текущее время
