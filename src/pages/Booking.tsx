@@ -123,13 +123,8 @@ const Booking = () => {
       const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
       const url = `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}&current_time=${currentTime}`;
       
-      console.log('Loading slots from:', url);
-      
       const response = await fetch(url);
       const data = await response.json();
-      
-      console.log('Received slots:', data.slots);
-      console.log('DEBUG INFO:', data.debug);
       
       setAvailableSlots(data.slots || []);
       

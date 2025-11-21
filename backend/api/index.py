@@ -776,23 +776,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             
                             if current_start < work_end_min and work_end_min - current_start >= total_time_needed:
                                 available_periods.append((current_start, work_end_min))
-                    
-                    # DEBUG: Log available periods
-                    import sys
-                    print(f"DEBUG available_slots: date={date}, service_id={service_id}", file=sys.stderr)
-                    print(f"  day_of_week={day_of_week}, weekday()={date_obj.weekday()}", file=sys.stderr)
-                    print(f"  work_start={work_start}, work_end={work_end}", file=sys.stderr)
-                    print(f"  duration={duration}, prep={prep_time}, buffer={buffer_time}, total={total_time_needed}", file=sys.stderr)
-                    print(f"  study_periods={len(study_periods)}, data={study_periods}", file=sys.stderr)
-                    print(f"  events={len(events)}, bookings={len(bookings)}", file=sys.stderr)
-                    print(f"  available_periods={available_periods}", file=sys.stderr)
-                    
                     # Генерируем слоты для каждого доступного периода
                     for period_start, period_end in available_periods:
-                        # Start from position where we have space for prep_time before the first slot
                         current = period_start + prep_time
-                        
-                        print(f"  Generating slots for period ({period_start}, {period_end}), starting at {current}", file=sys.stderr)
                         
                         while current + duration + buffer_time <= period_end:
                             slot_start = f"{current // 60:02d}:{current % 60:02d}"
@@ -835,29 +821,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     except:
                         pass
                 
-                # DEBUG: Add debug info to response
-                debug_info = {
-                    'date': date,
-                    'day_of_week': day_of_week,
-                    'weekday_num': date_obj.weekday(),
-                    'work_time': f'{work_start}-{work_end}',
-                    'study_periods_count': len(study_periods),
-                    'study_periods_raw': [dict(sp) for sp in study_periods],
-                    'events_count': len(events),
-                    'bookings_count': len(bookings),
-                    'work_priority': work_priority,
-                    'available_periods': [(p[0], p[1]) for p in available_periods],
-                    'duration': duration,
-                    'prep': prep_time,
-                    'buffer': buffer_time,
-                    'total_needed': total_time_needed
-                }
-                
                 return {
                     'statusCode': 200,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                     'isBase64Encoded': False,
-                    'body': json.dumps({'slots': slots, 'debug': debug_info})
+                    'body': json.dumps({'slots': slots})
                 }
         
         # WEEK SCHEDULE (долгосрочное расписание учёбы)
