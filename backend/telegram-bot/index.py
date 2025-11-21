@@ -74,6 +74,80 @@ def send_booking_notification(chat_id: int, booking_data: Dict) -> bool:
     
     return send_telegram_message(chat_id, text, reply_markup)
 
+def send_reminders() -> Dict[str, Any]:
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        return {'sent': 0, 'error': 'DATABASE_URL not set'}
+    
+    conn = psycopg2.connect(db_url)
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT value FROM settings WHERE owner_id = 1 AND key = 'reminder_hours'")
+            setting = cur.fetchone()
+            reminder_hours = float(setting['value']) if setting and setting['value'] else 0
+            
+            if reminder_hours == 0:
+                return {'sent': 0, 'message': 'Reminders disabled'}
+            
+            now = datetime.now()
+            reminder_time = now + timedelta(hours=reminder_hours)
+            
+            cur.execute('''
+                SELECT 
+                    b.id,
+                    b.booking_date,
+                    b.start_time,
+                    u.telegram_id,
+                    u.name as client_name,
+                    s.name as service_name,
+                    s.price
+                FROM bookings b
+                LEFT JOIN clients c ON b.client_id = c.id
+                LEFT JOIN users u ON c.user_id = u.id
+                LEFT JOIN services s ON b.service_id = s.id
+                WHERE b.status = 'confirmed'
+                AND u.telegram_id IS NOT NULL
+                AND b.booking_date = %s
+                AND b.start_time BETWEEN %s AND %s
+            ''', (
+                reminder_time.date(),
+                reminder_time.time(),
+                (reminder_time + timedelta(minutes=30)).time()
+            ))
+            
+            bookings = cur.fetchall()
+            sent_count = 0
+            
+            for booking in bookings:
+                date_str = booking['booking_date'].strftime('%d.%m.%Y')
+                time_str = booking['start_time'].strftime('%H:%M')
+                
+                hours_text = ''
+                if reminder_hours >= 1:
+                    hours_text = f"{int(reminder_hours)} ч"
+                if reminder_hours % 1 != 0:
+                    hours_text += f" 30 мин"
+                
+                reminder_text = f'''⏰ <b>Напоминание о записи</b>
+
+Привет, {booking["client_name"]}! 👋
+
+Через {hours_text} у вас запись:
+
+💇 <b>Услуга:</b> {booking["service_name"]}
+📅 <b>Дата:</b> {date_str}
+🕐 <b>Время:</b> {time_str}
+💰 <b>Цена:</b> {booking["price"]}₽
+
+До встречи! ✨'''
+                
+                if send_telegram_message(booking['telegram_id'], reminder_text):
+                    sent_count += 1
+            
+            return {'sent': sent_count, 'message': f'Sent {sent_count} reminders'}
+    finally:
+        conn.close()
+
 def get_calendar_for_date(conn, owner_id: int, date_str: str) -> str:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         date_obj = datetime.strptime(date_str, '%Y-%m-%d')
@@ -442,6 +516,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         body = json.loads(event.get('body', '{}'))
+        
+        # Отправка напоминаний (вызывается по крону или вручную)
+        if body.get('action') == 'send_reminders':
+            result = send_reminders()
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps(result),
+                'isBase64Encoded': False
+            }
         
         # Обработка уведомления о новой записи (от frontend)
         if 'booking_id' in body and 'client_name' in body:

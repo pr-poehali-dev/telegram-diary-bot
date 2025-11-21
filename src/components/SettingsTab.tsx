@@ -23,7 +23,7 @@ const SettingsTab = () => {
     work_start: '10:00',
     work_end: '20:00',
     work_priority: true,
-    reminder_days_before: 1,
+    reminder_hours: 0,
   });
 
   const [profile, setProfile] = useState({
@@ -39,7 +39,7 @@ const SettingsTab = () => {
       work_start: contextSettings.work_start || '10:00',
       work_end: contextSettings.work_end || '20:00',
       work_priority: contextSettings.work_priority === 'True' || contextSettings.work_priority === 'true',
-      reminder_days_before: Number(contextSettings.reminder_days_before) || 1,
+      reminder_hours: Number(contextSettings.reminder_hours) || 0,
     });
   }, [contextSettings]);
 
@@ -178,14 +178,29 @@ const SettingsTab = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Отправлять напоминание за (дней)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="7"
-                      value={systemSettings.reminder_days_before}
-                      onChange={(e) => setSystemSettings({ ...systemSettings, reminder_days_before: Number(e.target.value) })}
-                    />
+                    <Label>Отправлять напоминание за</Label>
+                    <select
+                      value={systemSettings.reminder_hours}
+                      onChange={(e) => setSystemSettings({ ...systemSettings, reminder_hours: Number(e.target.value) })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value={0}>Не отправлять</option>
+                      <option value={0.5}>30 минут</option>
+                      <option value={1}>1 час</option>
+                      <option value={1.5}>1.5 часа</option>
+                      <option value={2}>2 часа</option>
+                      <option value={2.5}>2.5 часа</option>
+                      <option value={3}>3 часа</option>
+                      <option value={3.5}>3.5 часа</option>
+                      <option value={4}>4 часа</option>
+                      <option value={4.5}>4.5 часа</option>
+                      <option value={5}>5 часов</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      {systemSettings.reminder_hours === 0 
+                        ? 'Напоминания отключены' 
+                        : `Клиенты получат напоминание за ${systemSettings.reminder_hours >= 1 ? Math.floor(systemSettings.reminder_hours) + ' ч' : ''} ${systemSettings.reminder_hours % 1 !== 0 ? '30 мин' : ''} до визита`}
+                    </p>
                   </div>
                   <Button onClick={handleSaveSystemSettings} disabled={loading}>
                     {loading ? 'Сохранение...' : 'Сохранить'}
