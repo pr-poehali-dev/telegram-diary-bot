@@ -110,7 +110,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         body_data.get('status', 'pending')
                     ))
                     
-                    booking_id = cur.fetchone()[0]
+                    booking_id = cur.fetchone()['id']
                     conn.commit()
                     
                     # Получаем полные данные записи для уведомления
