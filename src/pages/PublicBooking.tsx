@@ -220,9 +220,10 @@ const PublicBooking = () => {
       setSelectedTime('');
       setClientData({ name: '', phone: '', email: '' });
     } catch (error) {
+      console.error('Booking error:', error);
       toast({
         title: 'Ошибка',
-        description: 'Не удалось создать запись',
+        description: error instanceof Error ? error.message : 'Не удалось создать запись',
         variant: 'destructive',
       });
     } finally {
