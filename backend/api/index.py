@@ -855,14 +855,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                 available_periods.append((current_start, work_end_min))
                     # Генерируем слоты для каждого доступного периода
                     for period_start, period_end in available_periods:
-                        current = period_start + prep_time
+                        # Начинаем с начала периода, но первый слот должен начинаться с prep_time
+                        current = period_start
                         
-                        while current + duration + buffer_time <= period_end:
-                            slot_start = f"{current // 60:02d}:{current % 60:02d}"
+                        while current + total_time_needed <= period_end:
+                            # Клиент видит время начала услуги (после prep_time)
+                            slot_start = f"{(current + prep_time) // 60:02d}:{(current + prep_time) % 60:02d}"
                             
                             # Actual occupied time: prep BEFORE + service + buffer AFTER
-                            actual_start_min = current - prep_time
-                            actual_end_min = current + duration + buffer_time
+                            actual_start_min = current
+                            actual_end_min = current + total_time_needed
                             
                             # Check if slot conflicts with existing bookings
                             is_available = True
