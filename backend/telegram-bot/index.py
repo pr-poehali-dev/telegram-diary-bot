@@ -588,6 +588,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # Очищаем номер от пробелов и лишних символов
                     phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
                     
+                    # Добавляем + в начало, если его нет
+                    if not phone.startswith('+'):
+                        phone = '+' + phone
+                    
                     with conn.cursor(cursor_factory=RealDictCursor) as cur:
                         cur.execute('SELECT id, name FROM users WHERE phone = %s', (phone,))
                         user_data = cur.fetchone()
