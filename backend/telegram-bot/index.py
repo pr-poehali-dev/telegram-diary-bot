@@ -1,6 +1,6 @@
 '''
-Business: Telegram-бот для владельца - управление записями, мероприятиями и блокировками
-Args: event с httpMethod, body от Telegram webhook; context с request_id
+Business: Telegram-бот для владельца + отправка уведомлений о новых записях
+Args: event с httpMethod, body от Telegram webhook или данные записи для уведомления
 Returns: HTTP response 200 для Telegram
 '''
 
@@ -48,6 +48,31 @@ def send_telegram_message(chat_id: int, text: str, reply_markup: Optional[Dict] 
     except Exception as e:
         print(f'Error sending message: {e}')
         return False
+
+def send_booking_notification(chat_id: int, booking_data: Dict) -> bool:
+    text = f'''🔔 <b>Новая запись!</b>
+
+👤 <b>Клиент:</b> {booking_data['client_name']}
+📞 <b>Телефон:</b> {booking_data['client_phone']}
+✉️ <b>Email:</b> {booking_data.get('client_email', 'не указан')}
+
+💇 <b>Услуга:</b> {booking_data['service_name']}
+⏱ <b>Длительность:</b> {booking_data['duration']} мин
+💰 <b>Цена:</b> {booking_data['price']}₽
+
+📅 <b>Дата:</b> {booking_data['date']}
+🕐 <b>Время:</b> {booking_data['time']}
+
+⏳ Статус: Ожидает подтверждения'''
+    
+    reply_markup = {
+        'inline_keyboard': [[
+            {'text': '✅ Подтвердить', 'callback_data': f'confirm_{booking_data["booking_id"]}'},
+            {'text': '❌ Отменить', 'callback_data': f'cancel_{booking_data["booking_id"]}'}
+        ]]
+    }
+    
+    return send_telegram_message(chat_id, text, reply_markup)
 
 def get_calendar_for_date(conn, owner_id: int, date_str: str) -> str:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -355,6 +380,30 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         body = json.loads(event.get('body', '{}'))
+        
+        # Обработка уведомления о новой записи (от frontend)
+        if 'booking_id' in body and 'client_name' in body:
+            owner_telegram_id = int(os.environ.get('TELEGRAM_OWNER_ID', '0'))
+            
+            if owner_telegram_id == 0:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'TELEGRAM_OWNER_ID not configured'}),
+                    'isBase64Encoded': False
+                }
+            
+            success = send_booking_notification(owner_telegram_id, body)
+            
+            return {
+                'statusCode': 200 if success else 500,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({
+                    'success': success,
+                    'message': 'Notification sent' if success else 'Failed to send notification'
+                }),
+                'isBase64Encoded': False
+            }
         
         # Telegram webhook update
         if 'message' in body:
