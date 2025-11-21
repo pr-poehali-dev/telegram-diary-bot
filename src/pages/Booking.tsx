@@ -110,7 +110,12 @@ const Booking = () => {
   const loadAvailableSlots = async (date: Date, serviceId: string) => {
     setLoading(true);
     try {
-      const dateStr = date.toISOString().split('T')[0];
+      // Форматируем дату в местном часовом поясе (YYYY-MM-DD)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
       const API_URL = 'https://functions.poehali.dev/11f94891-555b-485d-ba38-a93639bb439c';
       const url = `${API_URL}?resource=available_slots&owner_id=${ownerId}&date=${dateStr}&service_id=${serviceId}`;
       
@@ -202,11 +207,17 @@ const Booking = () => {
         owner_id: ownerId,
       });
 
+      // Форматируем дату в местном часовом поясе
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const bookingDateStr = `${year}-${month}-${day}`;
+      
       // Create booking with prep and buffer time included
       await api.bookings.create({
         client_id: clientResponse.id,
         service_id: selectedService,
-        booking_date: selectedDate.toISOString().split('T')[0],
+        booking_date: bookingDateStr,
         start_time: startTime,
         end_time: endTime,
         status: 'pending',
