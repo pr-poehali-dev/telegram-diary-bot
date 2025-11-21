@@ -15,7 +15,10 @@ const ServicesTab = () => {
   const { services, loading } = useData();
 
   const activeServices = services.filter(s => s.active);
-  const totalRevenue = services.reduce((sum, s) => sum + Number(s.price), 0);
+  const totalRevenue = services.reduce((sum, s) => {
+    const priceNum = parseFloat(String(s.price).replace(/[^\d.]/g, ''));
+    return sum + (isNaN(priceNum) ? 0 : priceNum);
+  }, 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -98,7 +101,7 @@ const ServicesTab = () => {
                       </div>
                     </TableCell>
                     <TableCell className="font-semibold">
-                      {Number(service.price).toLocaleString('ru-RU')}₽
+                      {service.price}
                     </TableCell>
                     <TableCell>
                       {service.active ? (
