@@ -13,6 +13,19 @@ from datetime import datetime, timedelta
 import urllib.request
 import urllib.parse
 
+def get_main_keyboard() -> Dict:
+    return {
+        'keyboard': [
+            [{'text': '📅 Сегодня'}, {'text': '📆 Завтра'}, {'text': '📊 Неделя'}],
+            [{'text': '⏳ Ожидающие записи'}],
+            [{'text': '🎯 Мероприятия'}, {'text': '📝 Добавить событие'}],
+            [{'text': '🚫 Блокировки'}, {'text': '➕ Заблокировать дату'}],
+            [{'text': '🏠 Меню'}]
+        ],
+        'resize_keyboard': True,
+        'persistent': True
+    }
+
 def send_telegram_message(chat_id: int, text: str, reply_markup: Optional[Dict] = None) -> bool:
     bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
     url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
@@ -115,34 +128,37 @@ def get_calendar_for_date(conn, owner_id: int, date_str: str) -> str:
         return text
 
 def handle_command(conn, chat_id: int, command: str, owner_id: int) -> str:
-    if command == '/start':
-        return '''👋 <b>Добро пожаловать в бот управления записями!</b>
+    if command == '/start' or command == '🏠 Меню':
+        send_telegram_message(chat_id, '''👋 <b>Добро пожаловать в бот управления записями!</b>
 
 📅 <b>Просмотр календаря:</b>
-/today - Сегодня
-/tomorrow - Завтра
-/week - Неделя вперёд
-/pending - Ожидающие подтверждения
+• Сегодня / Завтра / Неделя
+
+⏳ <b>Записи:</b>
+• Ожидающие подтверждения
 
 🎯 <b>Мероприятия:</b>
-/event_add - Добавить мероприятие
-/event_list - Список мероприятий
-/event_delete - Удалить мероприятие
+• Список мероприятий
+• Добавить событие
+• Удалить событие
 
 🚫 <b>Блокировки дат:</b>
-/block_date - Заблокировать дату
-/unblock_date - Разблокировать дату
-/blocked_list - Список заблокированных дат'''
+• Список блокировок
+• Заблокировать дату
+• Разблокировать дату
+
+Используйте кнопки ниже для быстрого доступа 👇''', get_main_keyboard())
+        return None
     
-    elif command == '/today':
+    elif command == '/today' or command == '📅 Сегодня':
         today = datetime.now().strftime('%Y-%m-%d')
         return get_calendar_for_date(conn, owner_id, today)
     
-    elif command == '/tomorrow':
+    elif command == '/tomorrow' or command == '📆 Завтра':
         tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         return get_calendar_for_date(conn, owner_id, tomorrow)
     
-    elif command == '/week':
+    elif command == '/week' or command == '📊 Неделя':
         text = '📅 <b>Календарь на неделю:</b>\n\n'
         for i in range(7):
             date = (datetime.now() + timedelta(days=i)).strftime('%Y-%m-%d')
@@ -150,7 +166,7 @@ def handle_command(conn, chat_id: int, command: str, owner_id: int) -> str:
             text += '━━━━━━━━━━━━━━━━\n\n'
         return text
     
-    elif command == '/pending':
+    elif command == '/pending' or command == '⏳ Ожидающие записи':
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute('''
                 SELECT b.id, b.booking_date, b.start_time,
@@ -194,7 +210,7 @@ def handle_command(conn, chat_id: int, command: str, owner_id: int) -> str:
             
             return text if text else None
     
-    elif command == '/event_list':
+    elif command == '/event_list' or command == '🎯 Мероприятия':
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute('''
                 SELECT id, title, event_date, start_time, end_time, event_type, description
@@ -224,7 +240,7 @@ def handle_command(conn, chat_id: int, command: str, owner_id: int) -> str:
             
             return text
     
-    elif command == '/blocked_list':
+    elif command == '/blocked_list' or command == '🚫 Блокировки':
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute('''
                 SELECT id, blocked_date
@@ -247,7 +263,7 @@ def handle_command(conn, chat_id: int, command: str, owner_id: int) -> str:
             
             return text
     
-    elif command == '/event_add':
+    elif command == '/event_add' or command == '📝 Добавить событие':
         return '''🎯 <b>Добавить мероприятие</b>
 
 Формат: <code>/event_add ДАТА ВРЕМЯ_С ВРЕМЯ_ДО НАЗВАНИЕ</code>
@@ -258,12 +274,12 @@ def handle_command(conn, chat_id: int, command: str, owner_id: int) -> str:
     elif command == '/event_delete':
         return '''🗑 <b>Удалить мероприятие</b>
 
-Сначала посмотрите список: /event_list
+Сначала посмотрите список: 🎯 Мероприятия
 Затем используйте: <code>/event_delete ID</code>
 
 Пример: <code>/event_delete 5</code>'''
     
-    elif command == '/block_date':
+    elif command == '/block_date' or command == '➕ Заблокировать дату':
         return '''🚫 <b>Заблокировать дату</b>
 
 Формат: <code>/block_date ДАТА</code>
@@ -273,7 +289,7 @@ def handle_command(conn, chat_id: int, command: str, owner_id: int) -> str:
     elif command == '/unblock_date':
         return '''✅ <b>Разблокировать дату</b>
 
-Сначала посмотрите список: /blocked_list
+Сначала посмотрите список: 🚫 Блокировки
 Затем используйте: <code>/unblock_date ID</code>
 
 Пример: <code>/unblock_date 3</code>'''
