@@ -21,8 +21,6 @@ const App = () => (
           <Route path="/" element={<PublicBooking />} />
           <Route path="/WorldSettings" element={<AdminPanel />} />
           <Route path="/booking/:ownerId" element={<Booking />} />
-          <Route path="//booking/:ownerId" element={<Booking />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
