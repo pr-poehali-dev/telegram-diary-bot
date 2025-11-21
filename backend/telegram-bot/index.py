@@ -302,13 +302,15 @@ def handle_callback(conn, callback_data: str, chat_id: int, message_id: int, own
     
     return '❓ Неизвестное действие'
 
-def is_access_allowed(chat_id: int) -> bool:
+def is_access_allowed(chat_id: int, user_id: Optional[int] = None) -> bool:
     owner_telegram_id = int(os.environ.get('TELEGRAM_OWNER_ID', '0'))
     group_id = os.environ.get('TELEGRAM_GROUP_ID', '')
     
+    # Личные сообщения от владельца
     if chat_id == owner_telegram_id:
         return True
     
+    # Сообщения из разрешенной группы (от любого участника)
     if group_id and str(chat_id) == group_id:
         return True
     
