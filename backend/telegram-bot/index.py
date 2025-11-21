@@ -658,10 +658,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             bookings = cur.fetchall()
                             
                             if bookings:
-                                response_text = f'📅 <b>Ваши записи:</b>\n\n'
-                                
-                                # Создаём кнопки для каждой записи (только активные)
-                                buttons = []
+                                send_telegram_message(chat_id, '📅 <b>Ваши записи:</b>\n')
                                 
                                 for booking in bookings:
                                     status_emoji = {'pending': '⏳', 'confirmed': '✅', 'completed': '✔️', 'cancelled': '❌'}
@@ -676,25 +673,23 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                         'cancelled': 'Отменена'
                                     }.get(booking['status'], booking['status'])
                                     
-                                    response_text += f'{emoji} <b>Запись #{booking["id"]}</b>\n'
-                                    response_text += f'📆 {date_str} в {time_str}\n'
-                                    response_text += f'💇 {booking["service_name"]}\n'
-                                    response_text += f'💰 {booking["price"]}₽\n'
-                                    response_text += f'📊 {status_text}\n\n'
+                                    booking_text = f'{emoji} <b>Запись #{booking["id"]}</b>\n'
+                                    booking_text += f'📆 {date_str} в {time_str}\n'
+                                    booking_text += f'💇 {booking["service_name"]}\n'
+                                    booking_text += f'💰 {booking["price"]}₽\n'
+                                    booking_text += f'📊 {status_text}'
                                     
                                     # Добавляем кнопку отмены только для активных записей
                                     if booking['status'] in ['pending', 'confirmed']:
-                                        buttons.append([{
-                                            'text': f'❌ Отменить #{booking["id"]}',
-                                            'callback_data': f'client_cancel_{booking["id"]}'
-                                        }])
-                                
-                                # Отправляем с кнопками, если есть что отменять
-                                if buttons:
-                                    reply_markup = {'inline_keyboard': buttons}
-                                    send_telegram_message(chat_id, response_text, reply_markup)
-                                else:
-                                    send_telegram_message(chat_id, response_text)
+                                        reply_markup = {
+                                            'inline_keyboard': [[{
+                                                'text': '❌ Отменить эту запись',
+                                                'callback_data': f'client_cancel_{booking["id"]}'
+                                            }]]
+                                        }
+                                        send_telegram_message(chat_id, booking_text, reply_markup)
+                                    else:
+                                        send_telegram_message(chat_id, booking_text)
                             else:
                                 response_text = '📭 У вас нет предстоящих записей.'
                                 send_telegram_message(chat_id, response_text)
