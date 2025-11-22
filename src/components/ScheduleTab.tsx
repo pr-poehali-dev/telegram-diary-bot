@@ -244,13 +244,13 @@ const ScheduleTab = () => {
                   color: '#1e40af',
                 },
                 hasBookings: {
-                  backgroundColor: '#e9d5ff',
-                  color: '#6b21a8',
+                  backgroundColor: '#bbf7d0',
+                  color: '#166534',
                   fontWeight: 'bold',
                 },
                 hasEvents: {
-                  backgroundColor: '#fae8ff',
-                  color: '#7e22ce',
+                  backgroundColor: '#dbeafe',
+                  color: '#1e40af',
                   fontWeight: 'bold',
                 },
                 isBlocked: {
@@ -260,8 +260,8 @@ const ScheduleTab = () => {
                   textDecoration: 'line-through',
                 },
                 hasConflict: {
-                  backgroundColor: '#fee2e2',
-                  color: '#991b1b',
+                  backgroundColor: '#fed7aa',
+                  color: '#9a3412',
                   fontWeight: 'bold',
                 },
               }}
