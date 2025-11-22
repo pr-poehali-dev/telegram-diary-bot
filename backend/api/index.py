@@ -927,7 +927,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             'id': service['id'],
                             'name': service['name'],
                             'description': service['description'] if 'description' in service else '',
-                            'price': service['price'],
+                            'price': str(service['price']),
                             'duration_minutes': service['duration_minutes'],
                             'active': service['active']
                         })
@@ -1182,7 +1182,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                 'name': service['name'],
                                 'description': service['description'] if 'description' in service else '',
                                 'duration_minutes': service['duration_minutes'],
-                                'price': service['price'],
+                                'price': str(service['price']),
                                 'active': service['active']
                             })
                         
