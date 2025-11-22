@@ -50,18 +50,19 @@ export default function BlockedDatesCard({ blockedDates, onDataChange, onConflic
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Заблокированные даты</CardTitle>
-          <CardDescription>Дни, помеченные как "Занят"</CardDescription>
-        </div>
-        <Dialog open={showBlockDate} onOpenChange={setShowBlockDate}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Icon name="Ban" size={16} />
-              Заблокировать день
-            </Button>
-          </DialogTrigger>
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <CardTitle>Заблокированные даты</CardTitle>
+            <CardDescription>Дни, помеченные как "Занят"</CardDescription>
+          </div>
+          <Dialog open={showBlockDate} onOpenChange={setShowBlockDate}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="w-full sm:w-auto">
+                <Icon name="Ban" size={16} />
+                <span className="ml-2">Заблокировать день</span>
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Заблокировать дату</DialogTitle>

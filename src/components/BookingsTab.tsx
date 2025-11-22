@@ -212,14 +212,14 @@ const BookingsTab = () => {
         <CardHeader>
           <div className="flex flex-col gap-4">
             <CardTitle>Все записи</CardTitle>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Label>Дата:</Label>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Label className="whitespace-nowrap">Дата:</Label>
                 <Input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-40"
+                  className="w-36 flex-1 sm:flex-none"
                 />
                 <Button
                   variant="outline"
@@ -230,10 +230,10 @@ const BookingsTab = () => {
                 </Button>
               </div>
               
-              <div className="flex items-center gap-2">
-                <Label>Статус:</Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Label className="whitespace-nowrap">Статус:</Label>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-36 flex-1 sm:flex-none">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
