@@ -925,9 +925,19 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     response_text = f'✅ Блокировка #{block_id} снята'
                 
                 elif text == '⚙️ Админ-панель':
-                    # Отправляем ссылку на админ-панель с groupId
-                    admin_url = f'https://preview--telegram-diary-bot.poehali.dev/WorldSettings?groupId={chat_id}'
-                    response_text = f'⚙️ <b>Админ-панель владельца</b>\n\nПерейдите по ссылке для управления настройками:\n👉 {admin_url}'
+                    # Отправляем inline-кнопку для прямого перехода
+                    admin_url = f'https://telegram-diary-bot--preview.poehali.dev/WorldSettings?groupId={chat_id}'
+                    response_text = '⚙️ <b>Админ-панель владельца</b>\n\nНажмите кнопку ниже для входа:'
+                    
+                    reply_markup = {
+                        'inline_keyboard': [[{
+                            'text': '🔐 Войти в админ-панель',
+                            'url': admin_url
+                        }]]
+                    }
+                    
+                    send_telegram_message(chat_id, response_text, reply_markup)
+                    return {'statusCode': 200, 'body': 'OK', 'isBase64Encoded': False}
                 
                 else:
                     # Обычные команды
