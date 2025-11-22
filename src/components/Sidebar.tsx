@@ -74,12 +74,12 @@ const Sidebar = () => {
         <div className="flex items-center gap-2 md:gap-3 px-2 md:px-4 py-2 md:py-3">
           <Avatar className="h-8 w-8 md:h-10 md:w-10">
             <AvatarFallback className="bg-accent text-white text-xs md:text-sm">
-              {user?.name.substring(0, 2).toUpperCase() || 'ГС'}
+              {user?.role === 'admin' ? 'АД' : 'ВЛ'}
             </AvatarFallback>
           </Avatar>
           {sidebarOpen && (
             <div className="flex-1 min-w-0">
-              <p className="text-xs md:text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+              <p className="text-xs md:text-sm font-medium text-gray-900 truncate">ID: {user?.telegram_id}</p>
               <p className="text-xs text-gray-500 truncate">
                 {isAdmin ? 'Администратор' : isOwner ? 'Владелец' : 'Клиент'}
               </p>
