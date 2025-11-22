@@ -63,25 +63,26 @@ export default function BlockedDatesCard({ blockedDates, onDataChange, onConflic
                 <span className="ml-2">Заблокировать день</span>
               </Button>
             </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Заблокировать дату</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Дата</Label>
-                <Input
-                  type="date"
-                  value={blockDate}
-                  onChange={(e) => setBlockDate(e.target.value)}
-                />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Заблокировать дату</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Дата</Label>
+                  <Input
+                    type="date"
+                    value={blockDate}
+                    onChange={(e) => setBlockDate(e.target.value)}
+                  />
+                </div>
+                <Button onClick={() => handleBlockDate()} className="w-full">
+                  Заблокировать
+                </Button>
               </div>
-              <Button onClick={() => handleBlockDate()} className="w-full">
-                Заблокировать
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-2 md:grid-cols-3">
