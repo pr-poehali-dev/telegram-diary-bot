@@ -39,13 +39,7 @@ const LoginPage = () => {
     }
   };
 
-  const quickLogin = (id: number, role: string) => {
-    setTelegramId(String(id));
-    toast({
-      title: 'Демо-вход',
-      description: `Вход как ${role}`,
-    });
-  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 p-4">
@@ -72,26 +66,6 @@ const LoginPage = () => {
           >
             {loading ? 'Вход...' : 'Войти'}
           </Button>
-
-          <div className="pt-4 border-t">
-            <p className="text-sm text-gray-500 mb-3 text-center">Быстрый вход (демо):</p>
-            <div className="space-y-2">
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => quickLogin(123456789, 'Владелец')}
-              >
-                Войти как Владелец
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => quickLogin(999999999, 'Администратор')}
-              >
-                Войти как Администратор
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
