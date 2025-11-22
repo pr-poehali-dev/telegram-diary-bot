@@ -123,9 +123,12 @@ export default function EventsCard({ events, onDataChange, onConflict }: EventsC
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="meeting">Встреча</SelectItem>
+                    <SelectItem value="client">Клиент</SelectItem>
                     <SelectItem value="event">Мероприятие</SelectItem>
+                    <SelectItem value="rest">Отдых</SelectItem>
+                    <SelectItem value="sport">Спорт</SelectItem>
                     <SelectItem value="study">Учёба</SelectItem>
-                    <SelectItem value="booking">Бронирование</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -189,9 +192,12 @@ export default function EventsCard({ events, onDataChange, onConflict }: EventsC
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{event.title}</p>
                     <Badge variant="secondary">
-                      {event.type === 'event' ? 'Мероприятие' : 
-                       event.type === 'study' ? 'Учёба' : 
-                       event.type === 'booking' ? 'Бронирование' : event.type}
+                      {event.type === 'meeting' ? 'Встреча' : 
+                       event.type === 'client' ? 'Клиент' : 
+                       event.type === 'event' ? 'Мероприятие' : 
+                       event.type === 'rest' ? 'Отдых' : 
+                       event.type === 'sport' ? 'Спорт' : 
+                       event.type === 'study' ? 'Учёба' : event.type}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
