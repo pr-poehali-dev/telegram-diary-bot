@@ -144,16 +144,16 @@ const ScheduleTab = () => {
   const isSelectedDateBlocked = isDateBlocked(date);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 md:space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900">Календарь дел</h2>
-        <p className="text-gray-500 mt-1">Управляйте своим временем</p>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Календарь дел</h2>
+        <p className="text-sm md:text-base text-gray-500 mt-1">Управляйте своим временем</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between text-base md:text-lg">
               <span>Календарь</span>
               <Dialog open={showStudyDialog} onOpenChange={setShowStudyDialog}>
                 <DialogTrigger asChild>
@@ -221,7 +221,7 @@ const ScheduleTab = () => {
               mode="single"
               selected={date}
               onSelect={(newDate) => newDate && setDate(newDate)}
-              className="rounded-md"
+              className="rounded-md text-sm md:text-base max-w-full"
               modifiers={{
                 hasStudy: (day) => {
                   const dayName = getDayOfWeek(day);
@@ -266,25 +266,25 @@ const ScheduleTab = () => {
                 },
               }}
             />
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+            <div className="space-y-1.5 md:space-y-2">
+              <div className="flex items-center gap-2 text-xs md:text-sm">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-100 border border-blue-300 rounded flex-shrink-0"></div>
                 <span>Учеба</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
+              <div className="flex items-center gap-2 text-xs md:text-sm">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-purple-100 border border-purple-300 rounded flex-shrink-0"></div>
                 <span>Есть записи</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 bg-fuchsia-100 border border-fuchsia-300 rounded"></div>
+              <div className="flex items-center gap-2 text-xs md:text-sm">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-fuchsia-100 border border-fuchsia-300 rounded flex-shrink-0"></div>
                 <span>Мероприятия</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 bg-red-200 border border-red-400 rounded"></div>
+              <div className="flex items-center gap-2 text-xs md:text-sm">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-red-200 border border-red-400 rounded flex-shrink-0"></div>
                 <span>Заблокирован</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+              <div className="flex items-center gap-2 text-xs md:text-sm">
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-red-100 border border-red-300 rounded flex-shrink-0"></div>
                 <span>Конфликт с учёбой</span>
               </div>
             </div>

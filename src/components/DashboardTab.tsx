@@ -32,13 +32,13 @@ const DashboardTab = () => {
   const todayBookingsList = bookings.filter(b => b.date === new Date().toISOString().split('T')[0] && b.status !== 'cancelled');
   const topClients = clients.slice(0, 3);
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 md:space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900">Дашборд</h2>
-        <p className="text-gray-500 mt-1">Обзор вашего бизнеса</p>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Дашборд</h2>
+        <p className="text-sm md:text-base text-gray-500 mt-1">Обзор вашего бизнеса</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">

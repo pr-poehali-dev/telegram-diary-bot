@@ -100,7 +100,10 @@ export const useAppContext = () => {
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // На мобильных устройствах sidebar закрыт по умолчанию
+    return window.innerWidth >= 768;
+  });
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [showStudyDialog, setShowStudyDialog] = useState(false);
