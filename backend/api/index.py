@@ -1020,6 +1020,117 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'body': json.dumps({'message': 'Schedule deleted'})
                     }
         
+        # SERVICES
+        elif resource == 'services':
+            if method == 'GET':
+                owner_id = event.get('queryStringParameters', {}).get('owner_id')
+                
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute('''
+                        SELECT * FROM services
+                        WHERE owner_id = %s
+                        ORDER BY name
+                    ''', (owner_id,))
+                    services_raw = cur.fetchall()
+                    
+                    services = []
+                    for service in services_raw:
+                        services.append({
+                            'id': service['id'],
+                            'name': service['name'],
+                            'description': service['description'],
+                            'price': service['price'],
+                            'duration_minutes': service['duration_minutes'],
+                            'active': service['active']
+                        })
+                    
+                    return {
+                        'statusCode': 200,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'isBase64Encoded': False,
+                        'body': json.dumps({'services': services})
+                    }
+            
+            elif method == 'POST':
+                body_data = json.loads(event.get('body', '{}'))
+                
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute('''
+                        INSERT INTO services 
+                        (owner_id, name, description, price, duration_minutes, active)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        RETURNING id
+                    ''', (
+                        body_data['owner_id'],
+                        body_data['name'],
+                        body_data.get('description', ''),
+                        body_data['price'],
+                        body_data['duration_minutes'],
+                        body_data.get('active', True)
+                    ))
+                    
+                    service_id = cur.fetchone()['id']
+                    conn.commit()
+                    
+                    return {
+                        'statusCode': 201,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'isBase64Encoded': False,
+                        'body': json.dumps({'id': service_id, 'message': 'Service created'})
+                    }
+            
+            elif method == 'PUT':
+                body_data = json.loads(event.get('body', '{}'))
+                
+                with conn.cursor() as cur:
+                    cur.execute('''
+                        UPDATE services 
+                        SET name = %s, description = %s, price = %s, 
+                            duration_minutes = %s, active = %s
+                        WHERE id = %s
+                    ''', (
+                        body_data['name'],
+                        body_data.get('description', ''),
+                        body_data['price'],
+                        body_data['duration_minutes'],
+                        body_data.get('active', True),
+                        body_data['id']
+                    ))
+                    conn.commit()
+                    
+                    return {
+                        'statusCode': 200,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'isBase64Encoded': False,
+                        'body': json.dumps({'message': 'Service updated'})
+                    }
+            
+            elif method == 'DELETE':
+                service_id = event.get('queryStringParameters', {}).get('id')
+                
+                with conn.cursor() as cur:
+                    cur.execute('DELETE FROM services WHERE id = %s', (service_id,))
+                    conn.commit()
+                    
+                    return {
+                        'statusCode': 200,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'isBase64Encoded': False,
+                        'body': json.dumps({'message': 'Service deleted'})
+                    }
+        
         # BLOCKED DATES (флаги "Занят")
         elif resource == 'blocked_dates':
             if method == 'GET':
@@ -1180,8 +1291,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         services.append({
                             'id': service['id'],
                             'name': service['name'],
-                            'duration': f"{service['duration_minutes']} мин",
-                            'price': f"{service['price']}₽",
+                            'description': service['description'],
+                            'duration_minutes': service['duration_minutes'],
+                            'price': service['price'],
                             'active': service['active']
                         })
                     
