@@ -1,26 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/api';
+import BookingStepIndicator from '@/components/booking/BookingStepIndicator';
+import ServiceSelectionStep from '@/components/booking/ServiceSelectionStep';
+import DateTimeSelectionSteps from '@/components/booking/DateTimeSelectionSteps';
+import ClientDataStep from '@/components/booking/ClientDataStep';
+import TelegramNotificationDialog from '@/components/booking/TelegramNotificationDialog';
 
 interface Service {
   id: number;
@@ -37,7 +23,7 @@ interface TimeSlot {
 
 const PublicBooking = () => {
   const { toast } = useToast();
-  const ownerId = '1'; // Для главной страницы используем owner_id = 1
+  const ownerId = '1';
   
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
@@ -228,7 +214,6 @@ const PublicBooking = () => {
         status: 'pending',
       });
 
-      // Показываем успешное сообщение с инструкцией по Telegram
       const phoneForBot = clientData.phone.replace(/\s/g, '').replace(/-/g, '').replace(/\(/g, '').replace(/\)/g, '');
       
       toast({
@@ -236,11 +221,9 @@ const PublicBooking = () => {
         description: `Ваша запись ожидает подтверждения. Вы получите уведомление.`,
       });
       
-      // Формируем ссылку на Telegram с командой
       const telegramUrl = `https://t.me/Calendar_record_bot?start=${phoneForBot}`;
       setTelegramLink(telegramUrl);
       
-      // Показываем диалог через 1 секунду
       setTimeout(() => {
         setShowTelegramDialog(true);
       }, 1000);
@@ -273,232 +256,51 @@ const PublicBooking = () => {
             <CardDescription>Выберите услугу и удобное время</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center justify-center gap-2 mb-6">
-              {[1, 2, 3, 4].map((s) => (
-                <div
-                  key={s}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                    step >= s ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
-                  }`}
-                >
-                  {s}
-                </div>
-              ))}
-            </div>
+            <BookingStepIndicator currentStep={step} />
 
             {step === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Выберите услугу</h3>
-                <div className="grid gap-3">
-                  {services.filter(s => s.active).map((service) => (
-                    <button
-                      key={service.id}
-                      onClick={() => handleServiceSelect(String(service.id))}
-                      className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary transition-colors text-left"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold">{service.name}</p>
-                          <p className="text-sm text-gray-500">{service.duration} минут</p>
-                        </div>
-                        <p className="text-lg font-bold text-primary">{service.price}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <ServiceSelectionStep
+                services={services}
+                onServiceSelect={handleServiceSelect}
+              />
             )}
 
-            {step === 2 && selectedServiceData && (
-              <div className="space-y-4">
-                <Button variant="ghost" onClick={() => setStep(1)} className="mb-4">
-                  <Icon name="ArrowLeft" size={16} className="mr-2" />
-                  Назад к услугам
-                </Button>
-                
-                <div className="p-4 bg-primary/5 rounded-lg">
-                  <p className="text-sm text-gray-600">Выбрана услуга:</p>
-                  <p className="font-semibold">{selectedServiceData.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {selectedServiceData.duration} минут • {selectedServiceData.price}
-                  </p>
-                </div>
-
-                <h3 className="text-lg font-semibold">Выберите дату</h3>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                  className="rounded-md border mx-auto"
-                />
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-4">
-                <Button variant="ghost" onClick={() => setStep(2)} className="mb-4">
-                  <Icon name="ArrowLeft" size={16} className="mr-2" />
-                  Изменить дату
-                </Button>
-
-                <div className="p-4 bg-primary/5 rounded-lg space-y-2">
-                  <p className="font-semibold">{selectedServiceData?.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedDate?.toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </p>
-                </div>
-
-                <h3 className="text-lg font-semibold">Выберите время</h3>
-                {loading ? (
-                  <p className="text-center text-gray-500 py-8">Загрузка слотов...</p>
-                ) : availableSlots.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {availableSlots
-                      .filter((slot) => slot.available)
-                      .map((slot) => (
-                        <Button
-                          key={slot.time}
-                          variant={selectedTime === slot.time ? 'default' : 'outline'}
-                          onClick={() => handleTimeSelect(slot.time)}
-                          className="w-full"
-                        >
-                          {slot.time}
-                        </Button>
-                      ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-8">
-                    Нет свободных слотов на выбранную дату
-                  </p>
-                )}
-              </div>
+            {(step === 2 || step === 3) && (
+              <DateTimeSelectionSteps
+                step={step}
+                selectedServiceData={selectedServiceData}
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                availableSlots={availableSlots}
+                loading={loading}
+                onBackToServices={() => setStep(1)}
+                onBackToDate={() => setStep(2)}
+                onDateSelect={handleDateSelect}
+                onTimeSelect={handleTimeSelect}
+              />
             )}
 
             {step === 4 && (
-              <div className="space-y-4">
-                <Button variant="ghost" onClick={() => setStep(3)} className="mb-4">
-                  <Icon name="ArrowLeft" size={16} className="mr-2" />
-                  Изменить время
-                </Button>
-
-                <div className="p-4 bg-primary/5 rounded-lg space-y-2">
-                  <p className="font-semibold">{selectedServiceData?.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedDate?.toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'long',
-                    })}{' '}
-                    в {selectedTime}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {selectedServiceData?.duration} минут • {selectedServiceData?.price}
-                  </p>
-                </div>
-
-                <h3 className="text-lg font-semibold">Ваши данные</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Имя *</Label>
-                    <Input
-                      id="name"
-                      value={clientData.name}
-                      onChange={(e) =>
-                        setClientData({ ...clientData, name: e.target.value })
-                      }
-                      placeholder="Введите ваше имя"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Телефон *</Label>
-                    <Input
-                      id="phone"
-                      value={clientData.phone}
-                      onChange={(e) =>
-                        setClientData({ ...clientData, phone: e.target.value })
-                      }
-                      placeholder="+7 (___) ___-__-__"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={clientData.email}
-                      onChange={(e) =>
-                        setClientData({ ...clientData, email: e.target.value })
-                      }
-                      placeholder="your@email.com"
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleBooking}
-                  disabled={loading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? 'Создание записи...' : 'Записаться'}
-                </Button>
-              </div>
+              <ClientDataStep
+                selectedServiceData={selectedServiceData}
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                clientData={clientData}
+                loading={loading}
+                onBackToTime={() => setStep(3)}
+                onClientDataChange={setClientData}
+                onSubmit={handleBooking}
+              />
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Dialog open={showTelegramDialog} onOpenChange={setShowTelegramDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Icon name="Send" className="text-blue-500" />
-              Получайте уведомления в Telegram
-            </DialogTitle>
-            <DialogDescription>
-              Нажмите на кнопку ниже, чтобы автоматически открыть бота и подключить уведомления
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
-                📱 Вы будете получать:
-              </p>
-              <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 ml-4">
-                <li>✅ Подтверждение записи</li>
-                <li>⏰ Напоминание перед визитом</li>
-                <li>📝 Информацию об изменениях</li>
-              </ul>
-            </div>
-
-            <Button
-              onClick={() => window.open(telegramLink, '_blank')}
-              className="w-full"
-              size="lg"
-            >
-              <Icon name="Send" className="mr-2" size={20} />
-              Открыть Telegram бота
-            </Button>
-
-            <p className="text-xs text-center text-muted-foreground">
-              Или скопируйте ссылку: <br />
-              <a 
-                href={telegramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline break-all"
-              >
-                {telegramLink}
-              </a>
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TelegramNotificationDialog
+        open={showTelegramDialog}
+        telegramLink={telegramLink}
+        onOpenChange={setShowTelegramDialog}
+      />
     </div>
   );
 };
