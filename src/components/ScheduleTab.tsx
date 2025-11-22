@@ -232,9 +232,22 @@ const ScheduleTab = () => {
                   const month = String(day.getMonth() + 1).padStart(2, '0');
                   const dayNum = String(day.getDate()).padStart(2, '0');
                   const dateStr = `${year}-${month}-${dayNum}`;
-                  return bookings.some(b => b.date === dateStr);
+                  return bookings.some(b => b.date === dateStr) && getEventsForDate(day).length === 0;
                 },
-                hasEvents: (day) => getEventsForDate(day).length > 0,
+                hasEvents: (day) => getEventsForDate(day).length > 0 && !(() => {
+                  const year = day.getFullYear();
+                  const month = String(day.getMonth() + 1).padStart(2, '0');
+                  const dayNum = String(day.getDate()).padStart(2, '0');
+                  const dateStr = `${year}-${month}-${dayNum}`;
+                  return bookings.some(b => b.date === dateStr);
+                })(),
+                hasBoth: (day) => {
+                  const year = day.getFullYear();
+                  const month = String(day.getMonth() + 1).padStart(2, '0');
+                  const dayNum = String(day.getDate()).padStart(2, '0');
+                  const dateStr = `${year}-${month}-${dayNum}`;
+                  return bookings.some(b => b.date === dateStr) && getEventsForDate(day).length > 0;
+                },
                 isBlocked: (day) => isDateBlocked(day),
                 hasConflict: (day) => getConflictsForDate(day).length > 0,
               }}
@@ -249,8 +262,13 @@ const ScheduleTab = () => {
                   fontWeight: 'bold',
                 },
                 hasEvents: {
-                  backgroundColor: '#dbeafe',
-                  color: '#1e40af',
+                  backgroundColor: '#1e3a8a',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                },
+                hasBoth: {
+                  backgroundColor: '#0891b2',
+                  color: '#ffffff',
                   fontWeight: 'bold',
                 },
                 isBlocked: {
@@ -267,24 +285,29 @@ const ScheduleTab = () => {
               }}
             />
             <div className="space-y-1.5 md:space-y-2">
+              <div className="text-xs font-medium text-gray-500 mb-2">Легенда:</div>
               <div className="flex items-center gap-2 text-xs md:text-sm">
-                <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-100 border border-blue-300 rounded flex-shrink-0"></div>
-                <span>Учеба</span>
+                <div className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0" style={{backgroundColor: '#dbeafe'}}></div>
+                <span>Учёба</span>
               </div>
               <div className="flex items-center gap-2 text-xs md:text-sm">
-                <div className="w-3 h-3 md:w-4 md:h-4 bg-purple-100 border border-purple-300 rounded flex-shrink-0"></div>
+                <div className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0" style={{backgroundColor: '#bbf7d0'}}></div>
                 <span>Есть записи</span>
               </div>
               <div className="flex items-center gap-2 text-xs md:text-sm">
-                <div className="w-3 h-3 md:w-4 md:h-4 bg-fuchsia-100 border border-fuchsia-300 rounded flex-shrink-0"></div>
+                <div className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0" style={{backgroundColor: '#1e3a8a'}}></div>
                 <span>Мероприятия</span>
               </div>
               <div className="flex items-center gap-2 text-xs md:text-sm">
-                <div className="w-3 h-3 md:w-4 md:h-4 bg-red-200 border border-red-400 rounded flex-shrink-0"></div>
+                <div className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0" style={{backgroundColor: '#0891b2'}}></div>
+                <span>Запись + Мероприятие</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs md:text-sm">
+                <div className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0" style={{backgroundColor: '#fecaca'}}></div>
                 <span>Заблокирован</span>
               </div>
               <div className="flex items-center gap-2 text-xs md:text-sm">
-                <div className="w-3 h-3 md:w-4 md:h-4 bg-red-100 border border-red-300 rounded flex-shrink-0"></div>
+                <div className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0" style={{backgroundColor: '#fed7aa'}}></div>
                 <span>Конфликт с учёбой</span>
               </div>
             </div>
