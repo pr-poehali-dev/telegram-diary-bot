@@ -13,15 +13,20 @@ from datetime import datetime, timedelta
 import urllib.request
 import urllib.parse
 
-def get_main_keyboard() -> Dict:
+def get_main_keyboard(group_id: Optional[int] = None) -> Dict:
+    keyboard = [
+        [{'text': '📅 Сегодня'}, {'text': '📆 Завтра'}, {'text': '📊 Неделя'}],
+        [{'text': '⏳ Ожидающие записи'}],
+        [{'text': '🎯 Мероприятия'}, {'text': '📝 Добавить событие'}],
+        [{'text': '🚫 Блокировки'}, {'text': '➕ Заблокировать дату'}],
+        [{'text': '🏠 Меню'}]
+    ]
+    
+    if group_id:
+        keyboard.append([{'text': '⚙️ Админ-панель'}])
+    
     return {
-        'keyboard': [
-            [{'text': '📅 Сегодня'}, {'text': '📆 Завтра'}, {'text': '📊 Неделя'}],
-            [{'text': '⏳ Ожидающие записи'}],
-            [{'text': '🎯 Мероприятия'}, {'text': '📝 Добавить событие'}],
-            [{'text': '🚫 Блокировки'}, {'text': '➕ Заблокировать дату'}],
-            [{'text': '🏠 Меню'}]
-        ],
+        'keyboard': keyboard,
         'resize_keyboard': True,
         'persistent': True
     }
@@ -919,13 +924,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         conn.commit()
                     response_text = f'✅ Блокировка #{block_id} снята'
                 
+                elif text == '⚙️ Админ-панель':
+                    # Отправляем ссылку на админ-панель с groupId
+                    admin_url = f'https://preview--telegram-diary-bot.poehali.dev/WorldSettings?groupId={chat_id}'
+                    response_text = f'⚙️ <b>Админ-панель владельца</b>\n\nПерейдите по ссылке для управления настройками:\n👉 {admin_url}'
+                
                 else:
                     # Обычные команды
                     response_text = handle_command(conn, chat_id, text, 1)
                 
                 if response_text:
                     # Всегда добавляем клавиатуру для владельца
-                    keyboard = get_main_keyboard()
+                    keyboard = get_main_keyboard(chat_id if is_owner else None)
                     send_telegram_message(chat_id, response_text, keyboard)
             
             finally:

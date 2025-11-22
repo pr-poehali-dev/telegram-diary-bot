@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (telegramId: number) => Promise<void>;
+  loginByGroupId: (groupId: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
   isOwner: boolean;
@@ -35,11 +36,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    const checkAuth = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const groupId = urlParams.get('groupId');
+      
+      if (groupId) {
+        try {
+          const response = await fetch(`https://functions.poehali.dev/22e2b938-d28c-4bb0-b268-8ccb03bbac16?groupId=${groupId}`);
+          const data = await response.json();
+          
+          if (data.authorized) {
+            const adminUser = {
+              id: 1,
+              telegram_id: parseInt(groupId),
+              role: 'owner' as const,
+              name: 'Владелец',
+              phone: '',
+              email: ''
+            };
+            setUser(adminUser);
+            localStorage.setItem('user', JSON.stringify(adminUser));
+            localStorage.setItem('groupId', groupId);
+          }
+        } catch (error) {
+          console.error('Auth by groupId failed:', error);
+        }
+      } else {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+      }
+      setLoading(false);
+    };
+    
+    checkAuth();
   }, []);
 
   const login = async (telegramId: number) => {
@@ -56,9 +87,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const loginByGroupId = async (groupId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`https://functions.poehali.dev/22e2b938-d28c-4bb0-b268-8ccb03bbac16?groupId=${groupId}`);
+      const data = await response.json();
+      
+      if (data.authorized) {
+        const adminUser = {
+          id: 1,
+          telegram_id: parseInt(groupId),
+          role: 'owner' as const,
+          name: 'Владелец',
+          phone: '',
+          email: ''
+        };
+        setUser(adminUser);
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        localStorage.setItem('groupId', groupId);
+      } else {
+        throw new Error('Access denied');
+      }
+    } catch (error) {
+      console.error('Login by groupId failed:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('groupId');
   };
 
   const isAdmin = user?.role === 'admin';
@@ -66,7 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isClient = user?.role === 'client';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isOwner, isClient }}>
+    <AuthContext.Provider value={{ user, loading, login, loginByGroupId, logout, isAdmin, isOwner, isClient }}>
       {children}
     </AuthContext.Provider>
   );
