@@ -1142,11 +1142,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # ADMIN DATA (all data in one request)
         elif resource == 'admin_data':
             if method == 'GET':
-                owner_id = event.get('queryStringParameters', {}).get('owner_id', '1')
-                
-                with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                    # 1. Bookings
-                    cur.execute('''
+                try:
+                    owner_id = event.get('queryStringParameters', {}).get('owner_id', '1')
+                    
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        # 1. Bookings
+                        cur.execute('''
                         SELECT b.*, u.name as client_name, s.name as service_name, s.duration_minutes
                         FROM bookings b
                         LEFT JOIN clients c ON b.client_id = c.id
@@ -1155,125 +1156,125 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         WHERE b.owner_id = %s
                         ORDER BY b.booking_date DESC, b.start_time
                         LIMIT 100
-                    ''', (owner_id,))
-                    bookings_raw = cur.fetchall()
-                    
-                    bookings = []
-                    for booking in bookings_raw:
-                        bookings.append({
-                            'id': booking['id'],
-                            'client': booking['client_name'] or 'Неизвестно',
-                            'service': booking['service_name'] or 'Услуга удалена',
-                            'time': booking['start_time'].strftime('%H:%M') if booking['start_time'] else '00:00',
-                            'date': booking['booking_date'].strftime('%Y-%m-%d') if booking['booking_date'] else '',
-                            'status': booking['status'],
-                            'duration': booking['duration_minutes'] if booking['duration_minutes'] else 60
-                        })
-                    
-                    # 2. Services
-                    cur.execute('SELECT * FROM services WHERE owner_id = %s ORDER BY name', (owner_id,))
-                    services_raw = cur.fetchall()
-                    
-                    services = []
-                    for service in services_raw:
-                        services.append({
-                            'id': service['id'],
-                            'name': service['name'],
-                            'description': service['description'] if 'description' in service else '',
-                            'duration_minutes': service['duration_minutes'],
-                            'price': service['price'],
-                            'active': service['active']
-                        })
-                    
-                    # 3. Clients
-                    cur.execute('''
-                        SELECT c.*, u.name, u.phone, u.email
-                        FROM clients c
-                        JOIN users u ON c.user_id = u.id
-                        WHERE c.owner_id = %s
-                        ORDER BY c.total_visits DESC
-                    ''', (owner_id,))
-                    clients_raw = cur.fetchall()
-                    
-                    clients = []
-                    for client in clients_raw:
-                        clients.append({
-                            'id': client['id'],
-                            'name': client['name'],
-                            'phone': client['phone'],
-                            'email': client['email'],
-                            'visits': client['total_visits'],
-                            'lastVisit': client['last_visit_date'].strftime('%d.%m.%Y') if client['last_visit_date'] else 'Нет визитов'
-                        })
-                    
-                    # 4. Settings
-                    cur.execute('SELECT key, value FROM settings WHERE owner_id = %s', (int(owner_id),))
-                    settings_rows = cur.fetchall()
-                    settings = {row['key']: row['value'] for row in settings_rows}
-                    
-                    # 5. Events
-                    cur.execute('''
-                        SELECT * FROM calendar_events
-                        WHERE owner_id = %s
-                        ORDER BY event_date DESC, start_time
-                        LIMIT 100
-                    ''', (owner_id,))
-                    events_raw = cur.fetchall()
-                    
-                    events = []
-                    for evt in events_raw:
-                        events.append({
-                            'id': evt['id'],
-                            'type': evt['event_type'],
-                            'title': evt['title'],
-                            'date': evt['event_date'].strftime('%Y-%m-%d'),
-                            'startTime': evt['start_time'].strftime('%H:%M'),
-                            'endTime': evt['end_time'].strftime('%H:%M'),
-                            'description': evt['description']
-                        })
-                    
-                    # 6. Week Schedule
-                    cur.execute('''
-                        SELECT * FROM week_schedule
-                        WHERE owner_id = %s
-                        ORDER BY 
-                            CASE day_of_week
-                                WHEN 'monday' THEN 1
-                                WHEN 'tuesday' THEN 2
-                                WHEN 'wednesday' THEN 3
-                                WHEN 'thursday' THEN 4
-                                WHEN 'friday' THEN 5
-                                WHEN 'saturday' THEN 6
-                                WHEN 'sunday' THEN 7
-                            END,
-                            start_time
-                    ''', (owner_id,))
-                    schedule_raw = cur.fetchall()
-                    
-                    week_schedule = []
-                    for item in schedule_raw:
-                        week_schedule.append({
-                            'id': item['id'],
-                            'dayOfWeek': item['day_of_week'],
-                            'startTime': item['start_time'].strftime('%H:%M'),
-                            'endTime': item['end_time'].strftime('%H:%M')
-                        })
-                    
-                    # 7. Blocked Dates
-                    cur.execute('''
-                        SELECT * FROM blocked_dates
-                        WHERE owner_id = %s
-                        ORDER BY blocked_date
-                    ''', (owner_id,))
-                    blocked_raw = cur.fetchall()
-                    
-                    blocked_dates = []
-                    for item in blocked_raw:
-                        blocked_dates.append({
-                            'id': item['id'],
-                            'date': item['blocked_date'].strftime('%Y-%m-%d')
-                        })
-                    
+                        ''', (owner_id,))
+                        bookings_raw = cur.fetchall()
+                        
+                        bookings = []
+                        for booking in bookings_raw:
+                            bookings.append({
+                                'id': booking['id'],
+                                'client': booking['client_name'] or 'Неизвестно',
+                                'service': booking['service_name'] or 'Услуга удалена',
+                                'time': booking['start_time'].strftime('%H:%M') if booking['start_time'] else '00:00',
+                                'date': booking['booking_date'].strftime('%Y-%m-%d') if booking['booking_date'] else '',
+                                'status': booking['status'],
+                                'duration': booking['duration_minutes'] if booking['duration_minutes'] else 60
+                            })
+                        
+                        # 2. Services
+                        cur.execute('SELECT * FROM services WHERE owner_id = %s ORDER BY name', (owner_id,))
+                        services_raw = cur.fetchall()
+                        
+                        services = []
+                        for service in services_raw:
+                            services.append({
+                                'id': service['id'],
+                                'name': service['name'],
+                                'description': service['description'] if 'description' in service else '',
+                                'duration_minutes': service['duration_minutes'],
+                                'price': service['price'],
+                                'active': service['active']
+                            })
+                        
+                        # 3. Clients
+                        cur.execute('''
+                            SELECT c.*, u.name, u.phone, u.email
+                            FROM clients c
+                            JOIN users u ON c.user_id = u.id
+                            WHERE c.owner_id = %s
+                            ORDER BY c.total_visits DESC
+                        ''', (owner_id,))
+                        clients_raw = cur.fetchall()
+                        
+                        clients = []
+                        for client in clients_raw:
+                            clients.append({
+                                'id': client['id'],
+                                'name': client['name'],
+                                'phone': client['phone'],
+                                'email': client['email'],
+                                'visits': client['total_visits'],
+                                'lastVisit': client['last_visit_date'].strftime('%d.%m.%Y') if client['last_visit_date'] else 'Нет визитов'
+                            })
+                        
+                        # 4. Settings
+                        cur.execute('SELECT key, value FROM settings WHERE owner_id = %s', (int(owner_id),))
+                        settings_rows = cur.fetchall()
+                        settings = {row['key']: row['value'] for row in settings_rows}
+                        
+                        # 5. Events
+                        cur.execute('''
+                            SELECT * FROM calendar_events
+                            WHERE owner_id = %s
+                            ORDER BY event_date DESC, start_time
+                            LIMIT 100
+                        ''', (owner_id,))
+                        events_raw = cur.fetchall()
+                        
+                        events = []
+                        for evt in events_raw:
+                            events.append({
+                                'id': evt['id'],
+                                'type': evt['event_type'],
+                                'title': evt['title'],
+                                'date': evt['event_date'].strftime('%Y-%m-%d'),
+                                'startTime': evt['start_time'].strftime('%H:%M'),
+                                'endTime': evt['end_time'].strftime('%H:%M'),
+                                'description': evt['description']
+                            })
+                        
+                        # 6. Week Schedule
+                        cur.execute('''
+                            SELECT * FROM week_schedule
+                            WHERE owner_id = %s
+                            ORDER BY 
+                                CASE day_of_week
+                                    WHEN 'monday' THEN 1
+                                    WHEN 'tuesday' THEN 2
+                                    WHEN 'wednesday' THEN 3
+                                    WHEN 'thursday' THEN 4
+                                    WHEN 'friday' THEN 5
+                                    WHEN 'saturday' THEN 6
+                                    WHEN 'sunday' THEN 7
+                                END,
+                                start_time
+                        ''', (owner_id,))
+                        schedule_raw = cur.fetchall()
+                        
+                        week_schedule = []
+                        for item in schedule_raw:
+                            week_schedule.append({
+                                'id': item['id'],
+                                'dayOfWeek': item['day_of_week'],
+                                'startTime': item['start_time'].strftime('%H:%M'),
+                                'endTime': item['end_time'].strftime('%H:%M')
+                            })
+                        
+                        # 7. Blocked Dates
+                        cur.execute('''
+                            SELECT * FROM blocked_dates
+                            WHERE owner_id = %s
+                            ORDER BY blocked_date
+                        ''', (owner_id,))
+                        blocked_raw = cur.fetchall()
+                        
+                        blocked_dates = []
+                        for item in blocked_raw:
+                            blocked_dates.append({
+                                'id': item['id'],
+                                'date': item['blocked_date'].strftime('%Y-%m-%d')
+                            })
+                        
                     return {
                         'statusCode': 200,
                         'headers': {
@@ -1289,6 +1290,23 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             'events': events,
                             'weekSchedule': week_schedule,
                             'blockedDates': blocked_dates
+                        })
+                    }
+                except Exception as e:
+                    import traceback
+                    error_trace = traceback.format_exc()
+                    print(f"[ERROR] admin_data failed: {str(e)}")
+                    print(f"[ERROR] Traceback: {error_trace}")
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'isBase64Encoded': False,
+                        'body': json.dumps({
+                            'error': str(e),
+                            'trace': error_trace[:500]
                         })
                     }
         
