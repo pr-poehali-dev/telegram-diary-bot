@@ -99,7 +99,7 @@ export const useAppContext = () => {
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('schedule');
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     // На мобильных устройствах sidebar закрыт по умолчанию
     return window.innerWidth >= 768;
