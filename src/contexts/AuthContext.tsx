@@ -2,12 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { api } from '@/services/api';
 
 interface User {
-  id: number;
-  telegram_id: number;
-  role: 'admin' | 'owner' | 'client';
-  name: string;
-  phone?: string;
-  email?: string;
+  telegram_id: string;
+  role: 'admin' | 'owner';
 }
 
 interface AuthContextType {
@@ -47,12 +43,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (data.authorized) {
             const adminUser = {
-              id: 1,
-              telegram_id: parseInt(groupId),
-              role: 'owner' as const,
-              name: 'Владелец',
-              phone: '',
-              email: ''
+              telegram_id: groupId,
+              role: 'owner' as const
             };
             setUser(adminUser);
             localStorage.setItem('user', JSON.stringify(adminUser));
@@ -77,8 +69,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       const response = await api.auth.login(telegramId);
-      setUser(response.user);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      const userData = {
+        telegram_id: String(telegramId),
+        role: response.user.role
+      };
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -95,12 +91,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (data.authorized) {
         const adminUser = {
-          id: 1,
-          telegram_id: parseInt(groupId),
-          role: 'owner' as const,
-          name: 'Владелец',
-          phone: '',
-          email: ''
+          telegram_id: groupId,
+          role: 'owner' as const
         };
         setUser(adminUser);
         localStorage.setItem('user', JSON.stringify(adminUser));

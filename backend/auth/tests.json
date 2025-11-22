@@ -1,18 +1,39 @@
 {
   "tests": [
     {
-      "name": "Get user by telegram_id",
+      "name": "Valid owner login",
       "method": "GET",
       "path": "/?telegram_id=123456789",
       "expectedStatus": 200,
       "expectedBody": {
         "user": {
-          "id": 1,
-          "telegram_id": 123456789,
+          "telegram_id": "123456789",
           "role": "owner"
         }
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Valid admin login",
+      "method": "GET",
+      "path": "/?telegram_id=999999999",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "user": {
+          "telegram_id": "999999999",
+          "role": "admin"
+        }
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unauthorized telegram_id",
+      "method": "GET",
+      "path": "/?telegram_id=111111111",
+      "expectedStatus": 403,
+      "expectedBody": {
+        "error": "Access denied"
+      }
     },
     {
       "name": "Missing telegram_id",
@@ -20,9 +41,14 @@
       "path": "/",
       "expectedStatus": 400,
       "expectedBody": {
-        "error": "string"
-      },
-      "bodyMatcher": "partial"
+        "error": "telegram_id is required"
+      }
+    },
+    {
+      "name": "Rate limit check",
+      "method": "GET",
+      "path": "/?telegram_id=777777777",
+      "expectedStatus": 403
     }
   ]
 }
