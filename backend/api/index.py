@@ -1038,7 +1038,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         services.append({
                             'id': service['id'],
                             'name': service['name'],
-                            'description': service['description'],
+                            'description': service.get('description', ''),
                             'price': service['price'],
                             'duration_minutes': service['duration_minutes'],
                             'active': service['active']
@@ -1291,7 +1291,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         services.append({
                             'id': service['id'],
                             'name': service['name'],
-                            'description': service['description'],
+                            'description': service.get('description', ''),
                             'duration_minutes': service['duration_minutes'],
                             'price': service['price'],
                             'active': service['active']
