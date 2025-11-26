@@ -176,6 +176,26 @@ export default function ScheduleCycleManager({ open, onOpenChange, onSuccess }: 
     });
   };
 
+  const handleCopyFromWeek1 = () => {
+    if (!scheduleData) return;
+
+    const week1Copy: any = {};
+    DAYS_OF_WEEK.forEach(day => {
+      const schedule = scheduleData.week1[day.key];
+      week1Copy[day.key] = schedule ? { ...schedule } : null;
+    });
+
+    setScheduleData({
+      ...scheduleData,
+      week2: week1Copy,
+    });
+
+    toast({
+      title: 'Скопировано',
+      description: 'Расписание из недели 1 скопировано в неделю 2',
+    });
+  };
+
   const handleSave = async () => {
     if (!scheduleData) return;
 
@@ -363,6 +383,17 @@ export default function ScheduleCycleManager({ open, onOpenChange, onSuccess }: 
                     >
                       Неделя 2
                     </Button>
+                    {activeWeek === 2 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCopyFromWeek1}
+                        title="Скопировать расписание из недели 1"
+                      >
+                        <Icon name="Copy" size={14} className="mr-1" />
+                        Скопировать из недели 1
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
