@@ -172,8 +172,8 @@ const ScheduleTab = () => {
         <p className="text-sm md:text-base text-gray-500 mt-1">Управляйте своим временем</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        <Card className="lg:col-span-1">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
+        <Card className="lg:min-w-[320px] lg:max-w-[400px] lg:flex-shrink-0">
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-base md:text-lg">
               <span>Календарь</span>
@@ -194,12 +194,11 @@ const ScheduleTab = () => {
                 <div>📊 Текущая неделя: {currentCycleInfo.weekNumber}</div>
               </div>
             )}
-            <div className="overflow-x-auto">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(newDate) => newDate && setDate(newDate)}
-                className="rounded-md text-sm md:text-base w-full min-w-[280px]"
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(newDate) => newDate && setDate(newDate)}
+              className="rounded-md text-sm md:text-base w-full"
               modifiers={{
                 hasStudy: (day) => {
                   const dayName = getDayOfWeek(day);
@@ -262,7 +261,6 @@ const ScheduleTab = () => {
                 },
               }}
             />
-            </div>
             <div className="space-y-1.5 md:space-y-2">
               <div className="text-xs font-medium text-gray-500 mb-2">Легенда:</div>
               <div className="flex items-center gap-2 text-xs md:text-sm">
@@ -293,7 +291,7 @@ const ScheduleTab = () => {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:flex-1">
           <CardHeader>
             <CardTitle>
               {date.toLocaleDateString('ru-RU', {
