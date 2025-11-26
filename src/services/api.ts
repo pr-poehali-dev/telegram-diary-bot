@@ -94,6 +94,8 @@ export const api = {
 
   schedule: {
     getWeek: () => apiRequest<ApiResponse<any[]>>('week_schedule', 'GET'),
+    getForDate: (date: string) => apiRequest<ApiResponse<any[]>>('week_schedule', 'GET', undefined, { date }),
+    getCycles: () => apiRequest<ApiResponse<any[]>>('week_schedule', 'GET'),
     create: (schedule: any) => 
       apiRequest('week_schedule', 'POST', { ...schedule, owner_id: OWNER_ID }),
     delete: (id: number) => 

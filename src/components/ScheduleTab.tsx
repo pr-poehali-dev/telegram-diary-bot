@@ -4,47 +4,69 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { Calendar } from '@/components/ui/calendar';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
+import ScheduleCycleManager from './ScheduleCycleManager';
 
 interface WeekSchedule {
   [key: string]: { start: string; end: string } | null;
+}
+
+interface ScheduleForDate {
+  schedule: any[];
+  cycleStartDate: string | null;
+  weekNumber: number | null;
 }
 
 const ScheduleTab = () => {
   const { 
     bookings, 
     events: contextEvents, 
-    weekSchedule: contextWeekSchedule, 
     blockedDates: contextBlockedDates,
-    refreshBookings
+    refreshBookings,
+    getScheduleForDate,
+    refreshWeekSchedule
   } = useData();
   const { toast } = useToast();
   
   const [date, setDate] = useState<Date>(new Date());
-  const [showStudyDialog, setShowStudyDialog] = useState(false);
+  const [showCycleManager, setShowCycleManager] = useState(false);
   const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>({});
+  const [currentCycleInfo, setCurrentCycleInfo] = useState<{ startDate: string | null; weekNumber: number | null }>({ startDate: null, weekNumber: null });
 
   useEffect(() => {
-    const scheduleMap: WeekSchedule = {};
-    (contextWeekSchedule || []).forEach((item: any) => {
-      scheduleMap[item.dayOfWeek] = {
-        start: item.startTime,
-        end: item.endTime,
-      };
-    });
-    setWeekSchedule(scheduleMap);
-  }, [contextWeekSchedule]);
+    loadScheduleForDate(date);
+  }, [date]);
+
+  const loadScheduleForDate = async (selectedDate: Date) => {
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    try {
+      const response: ScheduleForDate = await getScheduleForDate(dateStr);
+      
+      const scheduleMap: WeekSchedule = {};
+      (response.schedule || []).forEach((item: any) => {
+        scheduleMap[item.dayOfWeek] = {
+          start: item.startTime,
+          end: item.endTime,
+        };
+      });
+      
+      setWeekSchedule(scheduleMap);
+      setCurrentCycleInfo({
+        startDate: response.cycleStartDate,
+        weekNumber: response.weekNumber
+      });
+    } catch (error) {
+      console.error('Error loading schedule for date:', error);
+      setWeekSchedule({});
+      setCurrentCycleInfo({ startDate: null, weekNumber: null });
+    }
+  };
 
   const getDayOfWeek = (date: Date): string => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -155,68 +177,23 @@ const ScheduleTab = () => {
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-base md:text-lg">
               <span>Календарь</span>
-              <Dialog open={showStudyDialog} onOpenChange={setShowStudyDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" title="Настроить расписание учёбы">
-                    <Icon name="GraduationCap" size={16} />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Шаблон недели (Учеба)</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {Object.entries(weekSchedule).map(([day, schedule]) => (
-                      <div key={day} className="flex items-center gap-2">
-                        <Label className="w-28 text-sm">{getRussianDayName(day)}</Label>
-                        <Input
-                          type="time"
-                          value={schedule?.start || ''}
-                          onChange={(e) =>
-                            setWeekSchedule({
-                              ...weekSchedule,
-                              [day]: schedule
-                                ? { ...schedule, start: e.target.value }
-                                : { start: e.target.value, end: '' },
-                            })
-                          }
-                          className="flex-1"
-                          placeholder="С"
-                        />
-                        <Input
-                          type="time"
-                          value={schedule?.end || ''}
-                          onChange={(e) =>
-                            setWeekSchedule({
-                              ...weekSchedule,
-                              [day]: schedule
-                                ? { ...schedule, end: e.target.value }
-                                : { start: '', end: e.target.value },
-                            })
-                          }
-                          className="flex-1"
-                          placeholder="До"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setWeekSchedule({ ...weekSchedule, [day]: null })
-                          }
-                        >
-                          <Icon name="X" size={16} />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button onClick={() => setShowStudyDialog(false)} className="w-full">
-                      Сохранить
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                title="Настроить расписание учёбы"
+                onClick={() => setShowCycleManager(true)}
+              >
+                <Icon name="GraduationCap" size={16} />
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {currentCycleInfo.startDate && (
+              <div className="text-xs text-gray-600 space-y-1">
+                <div>📅 Цикл с: {new Date(currentCycleInfo.startDate).toLocaleDateString('ru-RU')}</div>
+                <div>📊 Текущая неделя: {currentCycleInfo.weekNumber}</div>
+              </div>
+            )}
             <Calendar
               mode="single"
               selected={date}
@@ -445,6 +422,15 @@ const ScheduleTab = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ScheduleCycleManager
+        open={showCycleManager}
+        onOpenChange={setShowCycleManager}
+        onSuccess={() => {
+          refreshWeekSchedule();
+          loadScheduleForDate(date);
+        }}
+      />
     </div>
   );
 };

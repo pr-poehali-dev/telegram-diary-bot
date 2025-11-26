@@ -606,13 +606,41 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     day_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
                     day_of_week = day_names[date_obj.weekday()]
                     
-                    # Получаем расписание учёбы для этого дня
+                    # Получаем расписание учёбы для этого дня с учётом цикла
+                    # Находим актуальный цикл для даты
                     cur.execute('''
-                        SELECT TO_CHAR(start_time, 'HH24:MI') as start_time,
-                               TO_CHAR(end_time, 'HH24:MI') as end_time
-                        FROM week_schedule
-                        WHERE owner_id = %s AND day_of_week = %s
-                    ''', (int(owner_id), day_of_week))
+                        SELECT DISTINCT cycle_start_date 
+                        FROM week_schedule 
+                        WHERE owner_id = %s AND cycle_start_date <= %s
+                        ORDER BY cycle_start_date DESC 
+                        LIMIT 1
+                    ''', (int(owner_id), date))
+                    
+                    cycle_row = cur.fetchone()
+                    study_periods = []
+                    
+                    if cycle_row:
+                        cycle_start_date = cycle_row[0]
+                        
+                        # Считаем номер недели
+                        days_diff = (date_obj - datetime.datetime.strptime(str(cycle_start_date), '%Y-%m-%d')).days
+                        weeks_passed = days_diff // 7
+                        week_number = (weeks_passed % 2) + 1
+                        
+                        # Получаем расписание для этой недели и дня
+                        cur.execute('''
+                            SELECT TO_CHAR(start_time, 'HH24:MI') as start_time,
+                                   TO_CHAR(end_time, 'HH24:MI') as end_time
+                            FROM week_schedule
+                            WHERE owner_id = %s 
+                              AND day_of_week = %s 
+                              AND cycle_start_date = %s 
+                              AND week_number = %s
+                        ''', (int(owner_id), day_of_week, cycle_start_date, week_number))
+                        
+                        study_periods = cur.fetchall()
+                    else:
+                        study_periods = []
                     
                     study_periods = cur.fetchall()
                     
@@ -822,44 +850,129 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif resource == 'week_schedule':
             if method == 'GET':
                 owner_id = event.get('queryStringParameters', {}).get('owner_id')
+                selected_date = event.get('queryStringParameters', {}).get('date')  # Опциональная дата для выбора расписания
                 
                 with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                    cur.execute('''
-                        SELECT * FROM week_schedule
-                        WHERE owner_id = %s
-                        ORDER BY 
-                            CASE day_of_week
-                                WHEN 'monday' THEN 1
-                                WHEN 'tuesday' THEN 2
-                                WHEN 'wednesday' THEN 3
-                                WHEN 'thursday' THEN 4
-                                WHEN 'friday' THEN 5
-                                WHEN 'saturday' THEN 6
-                                WHEN 'sunday' THEN 7
-                            END,
-                            start_time
-                    ''', (owner_id,))
-                    
-                    schedule = cur.fetchall()
-                    
-                    result = []
-                    for item in schedule:
-                        result.append({
-                            'id': item['id'],
-                            'dayOfWeek': item['day_of_week'],
-                            'startTime': item['start_time'].strftime('%H:%M'),
-                            'endTime': item['end_time'].strftime('%H:%M')
-                        })
-                    
-                    return {
-                        'statusCode': 200,
-                        'headers': {
-                            'Content-Type': 'application/json',
-                            'Access-Control-Allow-Origin': '*'
-                        },
-                        'isBase64Encoded': False,
-                        'body': json.dumps({'schedule': result})
-                    }
+                    if selected_date:
+                        # Если передана дата - возвращаем расписание для конкретной даты
+                        import datetime
+                        date_obj = datetime.datetime.strptime(selected_date, '%Y-%m-%d')
+                        
+                        # Находим актуальный цикл для этой даты
+                        cur.execute('''
+                            SELECT DISTINCT cycle_start_date 
+                            FROM week_schedule 
+                            WHERE owner_id = %s AND cycle_start_date <= %s
+                            ORDER BY cycle_start_date DESC 
+                            LIMIT 1
+                        ''', (owner_id, selected_date))
+                        
+                        cycle_row = cur.fetchone()
+                        if not cycle_row:
+                            return {
+                                'statusCode': 200,
+                                'headers': {
+                                    'Content-Type': 'application/json',
+                                    'Access-Control-Allow-Origin': '*'
+                                },
+                                'isBase64Encoded': False,
+                                'body': json.dumps({'schedule': [], 'cycleStartDate': None, 'weekNumber': None})
+                            }
+                        
+                        cycle_start_date = cycle_row['cycle_start_date']
+                        
+                        # Считаем номер недели
+                        days_diff = (date_obj.date() - cycle_start_date).days
+                        weeks_passed = days_diff // 7
+                        week_number = (weeks_passed % 2) + 1  # 1 или 2
+                        
+                        # Получаем расписание для этой недели
+                        cur.execute('''
+                            SELECT * FROM week_schedule
+                            WHERE owner_id = %s 
+                              AND cycle_start_date = %s 
+                              AND week_number = %s
+                            ORDER BY 
+                                CASE day_of_week
+                                    WHEN 'monday' THEN 1
+                                    WHEN 'tuesday' THEN 2
+                                    WHEN 'wednesday' THEN 3
+                                    WHEN 'thursday' THEN 4
+                                    WHEN 'friday' THEN 5
+                                    WHEN 'saturday' THEN 6
+                                    WHEN 'sunday' THEN 7
+                                END,
+                                start_time
+                        ''', (owner_id, cycle_start_date, week_number))
+                        
+                        schedule = cur.fetchall()
+                        
+                        result = []
+                        for item in schedule:
+                            result.append({
+                                'id': item['id'],
+                                'dayOfWeek': item['day_of_week'],
+                                'startTime': item['start_time'].strftime('%H:%M'),
+                                'endTime': item['end_time'].strftime('%H:%M'),
+                                'cycleStartDate': cycle_start_date.strftime('%Y-%m-%d'),
+                                'weekNumber': item['week_number']
+                            })
+                        
+                        return {
+                            'statusCode': 200,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'isBase64Encoded': False,
+                            'body': json.dumps({
+                                'schedule': result,
+                                'cycleStartDate': cycle_start_date.strftime('%Y-%m-%d'),
+                                'weekNumber': week_number
+                            })
+                        }
+                    else:
+                        # Если дата не передана - возвращаем все расписания
+                        cur.execute('''
+                            SELECT * FROM week_schedule
+                            WHERE owner_id = %s
+                            ORDER BY 
+                                cycle_start_date DESC,
+                                week_number,
+                                CASE day_of_week
+                                    WHEN 'monday' THEN 1
+                                    WHEN 'tuesday' THEN 2
+                                    WHEN 'wednesday' THEN 3
+                                    WHEN 'thursday' THEN 4
+                                    WHEN 'friday' THEN 5
+                                    WHEN 'saturday' THEN 6
+                                    WHEN 'sunday' THEN 7
+                                END,
+                                start_time
+                        ''', (owner_id,))
+                        
+                        schedule = cur.fetchall()
+                        
+                        result = []
+                        for item in schedule:
+                            result.append({
+                                'id': item['id'],
+                                'dayOfWeek': item['day_of_week'],
+                                'startTime': item['start_time'].strftime('%H:%M'),
+                                'endTime': item['end_time'].strftime('%H:%M'),
+                                'cycleStartDate': item['cycle_start_date'].strftime('%Y-%m-%d'),
+                                'weekNumber': item['week_number']
+                            })
+                        
+                        return {
+                            'statusCode': 200,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'isBase64Encoded': False,
+                            'body': json.dumps({'schedule': result})
+                        }
             
             elif method == 'POST':
                 body_data = json.loads(event.get('body', '{}'))
@@ -867,15 +980,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 with conn.cursor() as cur:
                     query = '''
                         INSERT INTO week_schedule 
-                        (owner_id, day_of_week, start_time, end_time)
-                        VALUES (%s, %s, %s, %s)
+                        (owner_id, day_of_week, start_time, end_time, cycle_start_date, week_number)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                         RETURNING id
                     '''
                     cur.execute(query, (
                         body_data['owner_id'],
                         body_data['day_of_week'],
                         body_data['start_time'],
-                        body_data['end_time']
+                        body_data['end_time'],
+                        body_data['cycle_start_date'],
+                        body_data['week_number']
                     ))
                     
                     schedule_id = cur.fetchone()[0]

@@ -19,6 +19,7 @@ interface DataContextType {
   refreshWeekSchedule: () => Promise<void>;
   refreshBlockedDates: () => Promise<void>;
   refreshAll: () => Promise<void>;
+  getScheduleForDate: (date: string) => Promise<any>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -100,6 +101,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getScheduleForDate = async (date: string) => {
+    console.log('🔄 [DataContext] API ВЫЗОВ: schedule.getForDate()', date);
+    try {
+      const response = await api.schedule.getForDate(date);
+      console.log('✅ [DataContext] Расписание для даты загружено:', response);
+      return response;
+    } catch (err) {
+      console.error('❌ [DataContext] Error loading schedule for date:', err);
+      return { schedule: [], cycleStartDate: null, weekNumber: null };
+    }
+  };
+
   const refreshBlockedDates = async () => {
     console.log('🔄 [DataContext] API ВЫЗОВ: blockedDates.getAll()');
     try {
@@ -167,6 +180,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         refreshWeekSchedule,
         refreshBlockedDates,
         refreshAll,
+        getScheduleForDate,
       }}
     >
       {children}
