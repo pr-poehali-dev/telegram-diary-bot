@@ -1,16 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useData } from '@/contexts/DataContext';
-import WeekScheduleCard from './schedule/WeekScheduleCard';
+import { Button } from '@/components/ui/button';
+import Icon from '@/components/ui/icon';
 import EventsCard from './schedule/EventsCard';
 import BlockedDatesCard from './schedule/BlockedDatesCard';
 import ConflictDialog from './schedule/ConflictDialog';
+import ScheduleCycleManager from '@/components/ScheduleCycleManager';
 
-interface WeekScheduleItem {
-  id: number;
-  dayOfWeek: string;
-  startTime: string;
-  endTime: string;
-}
+
 
 interface CalendarEvent {
   id: number;
@@ -29,7 +26,6 @@ interface BlockedDate {
 
 export default function MyScheduleTab() {
   const { 
-    weekSchedule, 
     events, 
     blockedDates, 
     refreshWeekSchedule, 
@@ -40,6 +36,7 @@ export default function MyScheduleTab() {
   const [showConflict, setShowConflict] = useState(false);
   const [conflictData, setConflictData] = useState<any>(null);
   const [forceCallback, setForceCallback] = useState<(() => void) | null>(null);
+  const [showCycleManager, setShowCycleManager] = useState(false);
 
   const loadData = async () => {
     await Promise.all([
@@ -71,20 +68,22 @@ export default function MyScheduleTab() {
             Управление учебой, событиями и выходными днями
           </p>
         </div>
+        <Button 
+          variant="outline" 
+          size="lg"
+          onClick={() => setShowCycleManager(true)}
+          title="Настроить расписание учёбы"
+        >
+          <Icon name="GraduationCap" size={20} className="mr-2" />
+          Расписание учёбы
+        </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <WeekScheduleCard 
-          weekSchedule={weekSchedule} 
-          onDataChange={loadData} 
-        />
-        
-        <EventsCard 
-          events={events} 
-          onDataChange={loadData} 
-          onConflict={handleConflict}
-        />
-      </div>
+      <EventsCard 
+        events={events} 
+        onDataChange={loadData} 
+        onConflict={handleConflict}
+      />
 
       <BlockedDatesCard 
         blockedDates={blockedDates} 
@@ -97,6 +96,14 @@ export default function MyScheduleTab() {
         onOpenChange={setShowConflict}
         conflictData={conflictData}
         onForceAction={handleForceAction}
+      />
+
+      <ScheduleCycleManager
+        open={showCycleManager}
+        onOpenChange={setShowCycleManager}
+        onSuccess={() => {
+          refreshWeekSchedule();
+        }}
       />
     </div>
   );
