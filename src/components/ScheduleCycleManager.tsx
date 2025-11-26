@@ -221,13 +221,23 @@ export default function ScheduleCycleManager({ open, onOpenChange, onSuccess }: 
         for (const day of DAYS_OF_WEEK) {
           const schedule = weekData[day.key];
           if (schedule && schedule.start && schedule.end) {
-            await api.schedule.create({
+            console.log(`📤 [ScheduleCycleManager] Создаём запись:`, {
               day_of_week: day.key,
               start_time: schedule.start,
               end_time: schedule.end,
               cycle_start_date: scheduleData.startDate,
               week_number: weekNum,
             });
+            
+            const result = await api.schedule.create({
+              day_of_week: day.key,
+              start_time: schedule.start,
+              end_time: schedule.end,
+              cycle_start_date: scheduleData.startDate,
+              week_number: weekNum,
+            });
+            
+            console.log(`✅ [ScheduleCycleManager] Ответ от API:`, result);
           }
         }
       }
@@ -240,10 +250,10 @@ export default function ScheduleCycleManager({ open, onOpenChange, onSuccess }: 
       onSuccess();
       loadCycles();
     } catch (error) {
-      console.error('Error saving schedule:', error);
+      console.error('❌ [ScheduleCycleManager] Ошибка при сохранении:', error);
       toast({
         title: 'Ошибка',
-        description: 'Не удалось сохранить расписание',
+        description: `Не удалось сохранить расписание: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`,
         variant: 'destructive',
       });
     } finally {

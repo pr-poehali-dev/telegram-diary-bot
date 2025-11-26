@@ -8,9 +8,17 @@ interface ApiResponse<T> {
 async function apiRequest<T>(
   resource: string,
   method: string = 'GET',
-  body?: any
+  body?: any,
+  queryParams?: Record<string, string>
 ): Promise<T> {
   let url = `${API_URL}?resource=${resource}&owner_id=${OWNER_ID}`;
+  
+  // Добавляем дополнительные query параметры
+  if (queryParams) {
+    Object.entries(queryParams).forEach(([key, value]) => {
+      url += `&${key}=${encodeURIComponent(value)}`;
+    });
+  }
   
   // Для DELETE добавляем id в URL, если есть
   if (method === 'DELETE' && body?.id) {
