@@ -194,11 +194,12 @@ const ScheduleTab = () => {
                 <div>📊 Текущая неделя: {currentCycleInfo.weekNumber}</div>
               </div>
             )}
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={(newDate) => newDate && setDate(newDate)}
-              className="rounded-md text-sm md:text-base max-w-full"
+            <div className="overflow-x-auto">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(newDate) => newDate && setDate(newDate)}
+                className="rounded-md text-sm md:text-base w-full min-w-[280px]"
               modifiers={{
                 hasStudy: (day) => {
                   const dayName = getDayOfWeek(day);
@@ -261,6 +262,7 @@ const ScheduleTab = () => {
                 },
               }}
             />
+            </div>
             <div className="space-y-1.5 md:space-y-2">
               <div className="text-xs font-medium text-gray-500 mb-2">Легенда:</div>
               <div className="flex items-center gap-2 text-xs md:text-sm">
